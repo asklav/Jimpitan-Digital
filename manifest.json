@@ -1,10 +1,10 @@
 {
-  "id": "./Jimpitan.html",
+  "id": "./index.html",
   "name": "Jimpitan Digital",
   "short_name": "Jimpitan",
   "description": "Sistem Keuangan, Jimpitan dan Ronda Warga",
   "lang": "id-ID",
-  "start_url": "./Jimpitan.html",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#0f172a",
