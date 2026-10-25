@@ -1,7 +1,7 @@
 JIMPITAN DIGITAL — PAKET WEB APP
 
 Isi:
-- Jimpitan.html: aplikasi dengan tombol notifikasi dan pemasangan
+- index.html: aplikasi dengan tombol notifikasi dan pemasangan
 - manifest.json: identitas web app
 - sw.js: service worker untuk instalasi dan cache dasar
 - icons/: ikon 192x192 dan 512x512
