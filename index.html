@@ -2193,6 +2193,9 @@
                     console.warn('Transaksi petugas belum dapat dimuat ke dashboard admin:', txErr);
                     updateCloudStatusUI(true, 'Online · transaksi petugas perlu izin SELECT');
                 }
+                // Render ulang setelah tabel sumber (status warga dan transaksi petugas)
+                // selesai dibaca, bukan hanya setelah snapshot app_state berubah.
+                if (currentUser && typeof renderDashboardData === 'function') renderDashboardData();
                 isCloudActive = true;
                 if (!String(document.getElementById('cloudStatusText')?.innerText || '').includes('perlu izin')) {
                     updateCloudStatusUI(true, 'Supabase Online');
@@ -2212,10 +2215,19 @@
             if (cloudPollTimer) clearInterval(cloudPollTimer);
             if (supabaseConfig && supabaseAuthSession && currentUser) {
                 pollCloudData();
-                // Polling lebih responsif tiap 5 detik untuk menerima transaksi dan perubahan dashboard.
-                cloudPollTimer = setInterval(pollCloudData, 5000);
+                // Perbarui lebih cepat saat aplikasi terlihat; kurangi request saat tab latar.
+                cloudPollTimer = setInterval(() => {
+                    if (navigator.onLine && currentUser && document.visibilityState === 'visible') pollCloudData();
+                }, 3000);
             } else updateCloudStatusUI(false, 'Offline Mode');
         }
+
+        // Saat pengguna kembali membuka aplikasi, tarik data cloud segera tanpa menunggu timer.
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && navigator.onLine && supabaseAuthSession && currentUser) {
+                pollCloudData();
+            }
+        });
 
         window.addEventListener('online', () => {
             if (localDirty && supabaseAuthSession && currentUser?.role === 'admin') scheduleCloudSync();
