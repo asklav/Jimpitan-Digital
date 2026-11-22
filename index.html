@@ -1109,30 +1109,44 @@
         document.addEventListener('pointerdown', unlockJimpitanSound, { once: true });
         document.addEventListener('keydown', unlockJimpitanSound, { once: true });
 
-        function enableNotifications() {
-            unlockJimpitanSound();
-            if (!('Notification' in window)) {
-                showModal('Browser ini belum mendukung notifikasi sistem. Anda tetap dapat melihat pemberitahuan di dalam aplikasi.', 'Notifikasi Tidak Didukung');
-                return;
-            }
-            if (Notification.permission === 'granted') {
-                showModal('Notifikasi sistem sudah aktif. Pemberitahuan akan muncul saat aplikasi berada di latar belakang.', 'Notifikasi Aktif');
-                updateNotificationButton();
-                return;
-            }
-            if (Notification.permission === 'denied') {
-                showModal('Izin notifikasi diblokir. Buka pengaturan situs di Chrome, ubah Notifikasi menjadi Izinkan, lalu muat ulang halaman.', 'Izin Notifikasi Diblokir');
-                return;
-            }
-            Notification.requestPermission().then(permission => {
-                updateNotificationButton();
-                if (permission === 'granted') {
-                    try { new Notification('Jimpitan Digital', { body: 'Notifikasi berhasil diaktifkan.', icon: './icons/icon-192.png' }); } catch (e) {}
-                    showModal('Notifikasi berhasil diaktifkan.', 'Notifikasi Aktif');
-                } else {
-                    showModal('Izin notifikasi belum diberikan. Anda bisa mengaktifkannya melalui pengaturan situs di Chrome.', 'Notifikasi Belum Aktif');
-                }
+        // Push Notification server: diperlukan agar notifikasi tetap diterima saat tab/aplikasi ditutup.
+        const JIMPITAN_VAPID_PUBLIC_KEY = 'BAaPqoHmVpvntRtwbVwcpMrW7yGiElYIifSL0fzqdJK4wg-zD3-HWINNr8fDpvErOL7lBP2G4b-CAT7syDp1y5I';
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+            const raw = atob(base64);
+            return Uint8Array.from([...raw].map(ch => ch.charCodeAt(0)));
+        }
+        async function registerJimpitanPush() {
+            if (!('serviceWorker' in navigator) || !('PushManager' in window)) throw new Error('Browser belum mendukung Web Push. Gunakan Chrome Android dan pasang aplikasi ke layar utama.');
+            if (!supabaseAuthSession?.user?.id) throw new Error('Sesi login belum tersedia. Login ulang lalu aktifkan notifikasi.');
+            const registration = await navigator.serviceWorker.register('./sw.js');
+            await navigator.serviceWorker.ready;
+            let subscription = await registration.pushManager.getSubscription();
+            if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(JIMPITAN_VAPID_PUBLIC_KEY) });
+            const json = subscription.toJSON();
+            const token = await getValidAccessToken();
+            const response = await fetch(supabaseEndpoint('jimpitan_push_subscriptions') + '?on_conflict=endpoint', {
+                method: 'POST',
+                headers: { 'apikey': supabaseConfig.key, 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+                body: JSON.stringify({ user_id: supabaseAuthSession.user.id, endpoint: json.endpoint, p256dh: json.keys?.p256dh, auth: json.keys?.auth, user_agent: navigator.userAgent, updated_at: new Date().toISOString() })
             });
+            if (!response.ok) { const msg = await response.text(); throw new Error('Gagal menyimpan perangkat notifikasi ke Supabase: ' + msg.slice(0,220)); }
+            return true;
+        }
+        async function enableNotifications() {
+            unlockJimpitanSound();
+            if (!('Notification' in window)) { showModal('Browser ini belum mendukung notifikasi sistem. Gunakan Chrome versi terbaru.', 'Notifikasi Tidak Didukung'); return; }
+            if (Notification.permission === 'denied') { showModal('Izin notifikasi diblokir. Buka Pengaturan Chrome → Setelan situs → Notifikasi, lalu izinkan situs Jimpitan Digital.', 'Izin Notifikasi Diblokir'); return; }
+            try {
+                const permission = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+                updateNotificationButton();
+                if (permission !== 'granted') { showModal('Izin notifikasi belum diberikan.', 'Notifikasi Belum Aktif'); return; }
+                await registerJimpitanPush();
+                const reg = await navigator.serviceWorker.ready;
+                reg.showNotification('Jimpitan Digital', { body: 'Notifikasi server aktif. Pemberitahuan dapat masuk saat aplikasi ditutup.', icon: './icons/icon-192.png', badge: './icons/icon-192.png' });
+                showModal('Notifikasi server berhasil diaktifkan pada perangkat ini. Ulangi langkah ini pada setiap HP/akun yang ingin menerima notifikasi.', 'Push Notification Aktif');
+            } catch (err) { console.error(err); showModal('Notifikasi browser diizinkan, tetapi pendaftaran Push belum berhasil. ' + (err.message || err) + ' Pastikan SQL dan Edge Function Push sudah dipasang di Supabase.', 'Push Belum Terhubung'); }
         }
 
         function updateNotificationButton() {
@@ -2186,8 +2200,8 @@
             if (cloudPollTimer) clearInterval(cloudPollTimer);
             if (supabaseConfig && supabaseAuthSession && currentUser) {
                 pollCloudData();
-                // Polling ringan tiap 10 detik agar dashboard semua peran menerima ringkasan dan event baru.
-                cloudPollTimer = setInterval(pollCloudData, 10000);
+                // Polling lebih responsif tiap 5 detik untuk menerima transaksi dan perubahan dashboard.
+                cloudPollTimer = setInterval(pollCloudData, 5000);
             } else updateCloudStatusUI(false, 'Offline Mode');
         }
 
@@ -2951,7 +2965,7 @@
             const myScheduleCard = document.getElementById('petugas-my-schedule-card');
             if (myScheduleCard) myScheduleCard.classList.toggle('hidden', !isPetugas);
             if (isPetugas) {
-                loadMyPetugasSchedules();
+                loadMyPetugasSchedulesSafely();
                 startPetugasSchedulePolling();
             } else if (petugasSchedulePollTimer) {
                 clearInterval(petugasSchedulePollTimer);
@@ -3713,24 +3727,50 @@
         function notifyPetugasScheduleChanges(rows) {
             if (!currentUser || currentUser.role !== 'petugas' || !Array.isArray(rows)) return;
             const uid = String(supabaseAuthSession?.user?.id || currentUser.authUid || currentUser.id || 'petugas');
-            const storageKey = 'jimpitan_petugas_seen_schedules_' + uid;
-            let previous = [];
-            try { previous = JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch (_) {}
-            const currentIds = rows.map(row => String(row.id));
-            // Kunjungan pertama hanya membuat baseline agar jadwal lama tidak dianggap baru.
-            if (!localStorage.getItem(storageKey)) {
-                try { localStorage.setItem(storageKey, JSON.stringify(currentIds)); } catch (_) {}
+            const storageKey = 'jimpitan_petugas_schedule_snapshot_' + uid;
+            const summarize = row => ({
+                id: String(row.id),
+                schedule_date: String(row.schedule_date || ''),
+                start_time: String(row.start_time || ''),
+                end_time: String(row.end_time || ''),
+                area: String(row.area || ''),
+                notes: String(row.notes || ''),
+                status: String(row.status || 'Terjadwal')
+            });
+            let previous = null;
+            try { previous = JSON.parse(localStorage.getItem(storageKey) || 'null'); } catch (_) {}
+            const current = rows.map(summarize);
+            // Pengambilan pertama menjadi baseline; jadwal lama tetap tampil tanpa alarm palsu.
+            if (!Array.isArray(previous)) {
+                try { localStorage.setItem(storageKey, JSON.stringify(current)); } catch (_) {}
                 return;
             }
-            const newRows = rows.filter(row => !previous.includes(String(row.id)));
-            try { localStorage.setItem(storageKey, JSON.stringify(currentIds)); } catch (_) {}
-            newRows.forEach(row => {
-                const title = 'Jadwal Petugas Baru';
-                const body = `${scheduleFormatDate(row.schedule_date)} ${row.start_time || ''}-${row.end_time || ''} · ${row.area || 'Wilayah belum diisi'}`;
-                if ('Notification' in window && Notification.permission === 'granted') {
+            const oldById = new Map(previous.map(row => [String(row.id), row]));
+            const notices = [];
+            current.forEach(row => {
+                const old = oldById.get(row.id);
+                if (!old) {
+                    notices.push({ title: 'Jadwal Petugas Baru', row, detail: 'Anda mendapat tugas pengambilan jimpitan.' });
+                } else {
+                    const changed = ['schedule_date','start_time','end_time','area','notes','status']
+                        .some(key => String(old[key] ?? '') !== String(row[key] ?? ''));
+                    if (changed) {
+                        const detail = row.status === 'Dibatalkan' ? 'Jadwal Anda dibatalkan.'
+                            : row.status !== old.status ? 'Status jadwal Anda berubah menjadi ' + row.status + '.'
+                            : 'Tanggal, jam, wilayah, atau catatan tugas Anda diperbarui.';
+                        notices.push({ title: 'Perubahan Jadwal Petugas', row, detail });
+                    }
+                }
+            });
+            try { localStorage.setItem(storageKey, JSON.stringify(current)); } catch (_) {}
+            notices.forEach(({ title, row, detail }) => {
+                const body = `${detail} ${scheduleFormatDate(row.schedule_date)} ${row.start_time}-${row.end_time} · ${row.area || 'Wilayah belum diisi'}`;
+                // Toast tetap muncul saat aplikasi terbuka; notifikasi sistem muncul bila izin diberikan.
+                if (typeof showSyncToast === 'function') showSyncToast(title, body);
+                else if ('Notification' in window && Notification.permission === 'granted') {
                     try { new Notification(title, { body, icon: './icons/icon-192.png', tag: 'jadwal-petugas-' + row.id }); } catch (_) {}
                 }
-                playJimpitanNotificationSound();
+                try { if (navigator.vibrate) navigator.vibrate([180, 90, 180]); } catch (_) {}
             });
         }
 
@@ -3755,17 +3795,27 @@
         }
 
         let petugasSchedulePollTimer = null;
+        let petugasScheduleLoadBusy = false;
+        async function loadMyPetugasSchedulesSafely() {
+            if (petugasScheduleLoadBusy) return;
+            petugasScheduleLoadBusy = true;
+            try { await loadMyPetugasSchedules(); }
+            finally { petugasScheduleLoadBusy = false; }
+        }
         function startPetugasSchedulePolling() {
             if (petugasSchedulePollTimer) clearInterval(petugasSchedulePollTimer);
             petugasSchedulePollTimer = null;
             if (currentUser?.role === 'petugas' && supabaseAuthSession) {
+                // Cek jadwal lebih rapat; hanya mengambil baris yang ditugaskan ke akun ini.
                 petugasSchedulePollTimer = setInterval(() => {
-                    if (currentUser?.role === 'petugas' && document.visibilityState !== 'hidden') loadMyPetugasSchedules();
-                }, 60000);
+                    if (currentUser?.role === 'petugas' && document.visibilityState !== 'hidden' && navigator.onLine) {
+                        loadMyPetugasSchedulesSafely();
+                    }
+                }, 5000);
             }
         }
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible' && currentUser?.role === 'petugas') loadMyPetugasSchedules();
+            if (document.visibilityState === 'visible' && currentUser?.role === 'petugas') loadMyPetugasSchedulesSafely();
         });
 
         // --- PANEL KONTROL ADMIN & PETUGAS ---
