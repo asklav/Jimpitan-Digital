@@ -1126,10 +1126,22 @@
             if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(JIMPITAN_VAPID_PUBLIC_KEY) });
             const json = subscription.toJSON();
             const token = await getValidAccessToken();
-            const response = await fetch(supabaseEndpoint('jimpitan_push_subscriptions') + '?on_conflict=endpoint', {
+            // Daftarkan endpoint melalui RPC aman agar perangkat yang pernah
+            // dipakai akun lain dapat dipindahkan ke akun yang sedang login.
+            // Jangan gunakan upsert langsung ke tabel karena dapat ditolak RLS.
+            const response = await fetch(supabaseEndpoint('rpc/register_jimpitan_push_subscription'), {
                 method: 'POST',
-                headers: { 'apikey': supabaseConfig.key, 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
-                body: JSON.stringify({ user_id: supabaseAuthSession.user.id, endpoint: json.endpoint, p256dh: json.keys?.p256dh, auth: json.keys?.auth, user_agent: navigator.userAgent, updated_at: new Date().toISOString() })
+                headers: {
+                    'apikey': supabaseConfig.key,
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    p_endpoint: json.endpoint,
+                    p_p256dh: json.keys?.p256dh,
+                    p_auth: json.keys?.auth,
+                    p_user_agent: navigator.userAgent
+                })
             });
             if (!response.ok) { const msg = await response.text(); throw new Error('Gagal menyimpan perangkat notifikasi ke Supabase: ' + msg.slice(0,220)); }
             return true;
