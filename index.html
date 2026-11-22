@@ -1321,6 +1321,8 @@
         let localChangeVersion = 0;
         let cloudPollTimer = null;
         let cloudPollBusy = false;
+        let cloudSyncDebounceTimer = null;
+        let cloudPollFailureCount = 0;
         let lastCloudUpdatedAt = null;
 
         function saveDB() {
@@ -1365,9 +1367,14 @@
 
         function scheduleCloudSync() {
             // Snapshot lengkap berisi data sensitif dan hanya boleh disinkronkan administrator.
+            // Gabungkan beberapa perubahan UI yang berdekatan agar tidak saling menyalip.
             if (!supabaseConfig || !supabaseAuthSession || !currentUser || currentUser.role !== 'admin') return;
             if (cloudSyncBusy) { cloudSyncPending = true; return; }
-            syncAllToCloud();
+            if (cloudSyncDebounceTimer) clearTimeout(cloudSyncDebounceTimer);
+            cloudSyncDebounceTimer = setTimeout(() => {
+                cloudSyncDebounceTimer = null;
+                if (localDirty && currentUser?.role === 'admin') syncAllToCloud();
+            }, 450);
         }
 
         function autoBackupToStorage() {
@@ -1388,7 +1395,7 @@
             const text = document.getElementById('cloudStatusText');
             if (dot && text) {
                 dot.className = active
-                    ? "w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"
+                    ? "w-1.5 h-1.5 rounded-full bg-emerald-400"
                     : "w-1.5 h-1.5 rounded-full bg-slate-500";
                 text.innerText = detail || (active ? "Supabase Online" : "Offline Mode");
             }
@@ -1619,8 +1626,8 @@
             try {
                 do {
                     cloudSyncPending = false;
-                    const versionAtStart = localChangeVersion;
-                    const payload = {
+                    let versionAtStart = localChangeVersion;
+                    let payload = {
                         ...db,
                         __uiSettings: safeParseLocalStorage('jimpitan_ui_settings', {})
                     };
@@ -1633,7 +1640,40 @@
                         // PATCH, simpan timestamp yang dikembalikan server (bukan timestamp lokal),
                         // karena Postgres/Supabase dapat menormalkan format atau presisi waktunya.
                         if (!lastCloudUpdatedAt || remoteBeforeWrite.updated_at !== lastCloudUpdatedAt) {
-                            throw new Error('Konflik sinkronisasi: data cloud berubah sejak terakhir dibaca. Data lokal tetap aman dan tidak dikirim. Muat ulang data cloud, lalu gabungkan perubahan lokal yang belum tersinkron.');
+                            // Versi cloud berubah di perangkat lain. Cadangkan perubahan lokal,
+                            // gabungkan berdasarkan ID unik, lalu tulis memakai token cloud terbaru.
+                            // CAS pada PATCH di bawah tetap mencegah menimpa perubahan yang datang
+                            // tepat saat proses penggabungan berlangsung.
+                            try {
+                                localStorage.setItem('jimpitan_auto_conflict_backup', JSON.stringify({
+                                    db: payload, saved_at: new Date().toISOString(),
+                                    cloud_updated_at: remoteBeforeWrite.updated_at,
+                                    note: 'Backup otomatis sebelum merge konflik lintas perangkat'
+                                }));
+                            } catch (backupErr) {
+                                throw new Error('Cloud berubah dan backup lokal gagal dibuat. Data lokal tetap aman; ekspor backup sebelum mencoba lagi.');
+                            }
+                            const merged = mergeCloudAndLocalSnapshots(remoteBeforeWrite.payload || {}, payload);
+                            const mergedSettings = merged.__uiSettings || {};
+                            delete merged.__uiSettings;
+                            applyingCloudData = true;
+                            try {
+                                db = merged;
+                                if (!Array.isArray(db.users)) db.users = [];
+                                if (!Array.isArray(db.jimpitan)) db.jimpitan = [];
+                                if (!Array.isArray(db.resetRequests)) db.resetRequests = [];
+                                if (!Array.isArray(db.activities)) db.activities = [];
+                                localStorage.setItem('jimpitan_db', JSON.stringify(db));
+                                localStorage.setItem('jimpitan_ui_settings', JSON.stringify(mergedSettings));
+                                applyUiSettings();
+                            } finally { applyingCloudData = false; }
+                            payload = { ...db, __uiSettings: mergedSettings };
+                            lastCloudUpdatedAt = remoteBeforeWrite.updated_at;
+                            localDirty = true;
+                            localStorage.setItem('jimpitan_cloud_dirty', '1');
+                            localChangeVersion++;
+                            versionAtStart = localChangeVersion;
+                            if (typeof renderDashboardData === 'function') renderDashboardData();
                         }
                         const updatedRows = await restRequest(
                             'jimpitan_app_state',
@@ -2139,9 +2179,13 @@
                     await flushPetugasPending();
                     await loadMyPetugasSchedules();
                     await refreshSharedDashboardSummary();
+                    cloudPollFailureCount = 0;
                 } catch (err) {
-                    isCloudActive = false;
-                    updateCloudStatusUI(false, 'Data lokal aman — koneksi petugas gagal');
+                    cloudPollFailureCount++;
+                    if (cloudPollFailureCount >= 2) {
+                        isCloudActive = false;
+                        updateCloudStatusUI(false, 'Data lokal aman — koneksi petugas terganggu');
+                    }
                     console.warn('Penyegaran data petugas gagal:', err);
                 }
                 return;
@@ -2175,12 +2219,18 @@
                 // selesai dibaca, bukan hanya setelah snapshot app_state berubah.
                 if (currentUser && typeof renderDashboardData === 'function') renderDashboardData();
                 isCloudActive = true;
+                cloudPollFailureCount = 0;
                 if (!String(document.getElementById('cloudStatusText')?.innerText || '').includes('perlu izin')) {
                     updateCloudStatusUI(true, 'Supabase Online');
                 }
             } catch (err) {
-                isCloudActive = false;
-                updateCloudStatusUI(false, 'Offline / Relogin Required');
+                cloudPollFailureCount++;
+                // Satu kegagalan request sesaat tidak langsung mengubah indikator Online/Offline.
+                if (cloudPollFailureCount >= 2) {
+                    isCloudActive = false;
+                    updateCloudStatusUI(false, 'Koneksi Supabase terputus — data lokal aman');
+                }
+                console.warn('Polling Supabase gagal:', err);
             } finally {
                 await refreshSharedDashboardSummary();
             }
