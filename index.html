@@ -462,28 +462,6 @@
                             </div>
                         </div>
 
-                        <!-- Catat Penarikan Jimpitan Cepat (Dapat Diakses Admin & Petugas) -->
-                        <div id="quick-payment-section" class="hidden bg-slate-900 rounded-2xl p-5 border border-slate-800 shadow-sm">
-                          <div class="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
-                            <h2 class="text-sm font-bold text-white flex items-center">
-                              <i class="fa-solid fa-cash-register text-emerald-400 mr-2"></i> Catat Penarikan Iuran Harian Cepat
-                            </h2>
-                            <span class="text-xs font-semibold text-slate-400">Tersinkronisasi Realtime</span>
-                          </div>
-
-                          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-                            <div class="sm:col-span-2">
-                              <label class="block text-xs font-semibold text-slate-400 mb-1">Pilih Warga Terdaftar di Database Admin</label>
-                              <select id="selectMemberTransaction" class="w-full px-3 py-2.5 rounded-xl border border-slate-800 text-xs bg-slate-950 text-slate-200 outline-none">
-                                <option value="">-- Pilih Anggota --</option>
-                              </select>
-                            </div>
-                            <button onclick="handleQuickPayment()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center shadow-sm h-10 cursor-pointer">
-                              <i class="fa-solid fa-hand-holding-dollar mr-2"></i> Tandai Lunas Hari Ini
-                            </button>
-                          </div>
-                        </div>
-
                         <!-- Kartu informasi dengan tata letak seragam untuk warga; tidak memberikan hak input transaksi -->
                         <div id="quick-payment-readonly-section" class="hidden bg-slate-900 rounded-2xl p-5 border border-slate-800 shadow-sm">
                           <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-3">
@@ -1881,7 +1859,7 @@
             } finally { applyingCloudData = false; }
             isCloudActive = true;
             updateCloudStatusUI(true, pending.length ? 'Online — ada setoran menunggu sinkronisasi' : 'Supabase Online (Petugas)');
-            if (typeof renderDashboardData === 'function' && currentUser) { renderDashboardData(); populateQuickPaymentDropdown(); }
+            if (typeof renderDashboardData === 'function' && currentUser) { renderDashboardData(); }
         }
 
         async function sendPetugasSetoran(user, amount, dateTime, clientId, paymentDays = 1) {
@@ -2974,7 +2952,6 @@
             const userGreeting = document.getElementById('user-greeting');
             const adminBtnContainer = document.getElementById('header-admin-btn-container');
             const petugasActionContainer = document.getElementById('dashboard-petugas-action-container');
-            const quickPaymentSection = document.getElementById('quick-payment-section');
             const quickPaymentReadonlySection = document.getElementById('quick-payment-readonly-section');
             const myQrContainer = document.getElementById('my-qrcode-container');
             const btnAddTrans = document.getElementById('btn-add-trans');
@@ -3001,14 +2978,12 @@
             if (isAdminOrPetugas) {
                 if (isAdmin) adminBtnContainer.classList.remove('hidden'); else adminBtnContainer.classList.add('hidden');
                 petugasActionContainer.classList.remove('hidden');
-                quickPaymentSection.classList.remove('hidden');
                 if (quickPaymentReadonlySection) quickPaymentReadonlySection.classList.add('hidden');
                 if (isAdmin) btnAddTrans.classList.remove('hidden'); else btnAddTrans.classList.add('hidden');
                 if (thActionHeader) { if (isAdmin) thActionHeader.classList.remove('hidden'); else thActionHeader.classList.add('hidden'); }
             } else {
                 adminBtnContainer.classList.add('hidden');
                 petugasActionContainer.classList.add('hidden');
-                quickPaymentSection.classList.add('hidden');
                 if (quickPaymentReadonlySection) quickPaymentReadonlySection.classList.remove('hidden');
                 btnAddTrans.classList.add('hidden');
                 if(thActionHeader) thActionHeader.classList.add('hidden');
@@ -3029,7 +3004,6 @@
             });
 
             renderDashboardData();
-            populateQuickPaymentDropdown();
             if (supabaseAuthSession && currentUser) refreshSharedDashboardSummary();
         }
 
@@ -3403,76 +3377,6 @@
                 .catch(err => {
                     showModal('Gambar QR Code tidak dapat dibaca: ' + err, 'Scan Gambar Gagal');
                 });
-        }
-
-        // --- QUICK PAYMENT AT DASHBOARD ---
-        function populateQuickPaymentDropdown() {
-            const select = document.getElementById('selectMemberTransaction');
-            if(!select) return;
-            select.innerHTML = '<option value="">-- Pilih Anggota Warga --</option>';
-            db.users.forEach(u => {
-                select.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(u.id)}">${escapeHtml(u.name)} - ${escapeHtml(u.address)} (${u.status === 'Terisi' ? 'Lunas Hari Ini' : 'Belum Bayar'})</option>`);
-            });
-        }
-
-        async function handleQuickPayment() {
-            const userId = document.getElementById('selectMemberTransaction').value;
-            if (!userId) {
-                showModal('Pilih warga terlebih dahulu.', 'Peringatan');
-                return;
-            }
-
-            const user = db.users.find(u => String(u.id) === String(userId));
-            if (!user) return;
-
-            const amount = Number(user.dailyNominal ?? 2000);
-            if (!isValidAmount(amount)) { showModal('Nominal iuran warga tidak valid. Perbaiki data nominal terlebih dahulu.', 'Nominal Tidak Valid'); return; }
-            const todayStr = getTodayDateString();
-            if (db.jimpitan.some(item => item.type === 'Masuk' && String(item.userId ?? item.memberId ?? item.user_id ?? '') === String(user.id) && getRecordDateString(item) === todayStr)) {
-                showModal('Setoran warga ini sudah tercatat hari ini.', 'Setoran Duplikat');
-                return;
-            }
-            const nowTimeStr = makeRecordTimestamp();
-
-            user.status = 'Terisi';
-            user.lastPaidDate = todayStr;
-
-            const quickRecord = {
-                id: Date.now(), userId: user.id, memberId: String(user.memberId || user.id), name: user.name,
-                address: user.address, amount, type: 'Masuk', dateTime: nowTimeStr, paymentDate: todayStr,
-                processedBy: currentUser.name
-            };
-            if (currentUser?.role === 'petugas') {
-                if (amount !== Number(user.dailyNominal || 2000)) { showModal('Nominal harus sesuai ketentuan warga.', 'Nominal Tidak Sesuai'); return; }
-                const clientId = String(quickRecord.id);
-                db.jimpitan.push(quickRecord);
-                try {
-                    if (!navigator.onLine) throw new Error('Perangkat sedang offline.');
-                    await sendPetugasSetoran(user, amount, nowTimeStr, clientId);
-                    try { await syncWargaStatusPaid(user, todayStr); }
-                    catch (statusErr) { showModal('Setoran sudah masuk server, tetapi status belum tersinkron. Periksa izin UPDATE RLS jimpitan_warga_status. Detail: ' + statusErr.message, 'Status Belum Tersinkron'); }
-                    await loadPetugasScopedData();
-                    showModal(`Setoran ${user.name} berhasil dikirim ke server.`, 'Setoran Berhasil');
-                } catch (err) {
-                    const q = getPetugasPendingQueue();
-                    if (!q.some(x => String(x.client_id) === clientId)) q.push({ client_id: clientId, member_id: String(user.memberId || user.id), amount, date_time: nowTimeStr, localRecord: quickRecord });
-                    setPetugasPendingQueue(q); saveDB();
-                    showModal('Setoran disimpan lokal, tetapi belum terkonfirmasi server dan masuk antrean sinkronisasi. Detail: ' + err.message, 'Sinkronisasi Tertunda');
-                }
-            } else {
-                db.jimpitan.push(quickRecord);
-                saveDB();
-                logActivity(`Setoran cepat: ${user.name} (Rp ${amount.toLocaleString('id-ID')})`);
-                try {
-                    await syncWargaStatusPaid(user, todayStr);
-                    showModal(`Setoran ${user.name} berhasil dicatat dan status Supabase diperbarui menjadi TERISI.`, 'Setoran Berhasil');
-                } catch (statusErr) {
-                    showModal(`Transaksi tersimpan, tetapi status Supabase belum diperbarui. Periksa member_id dan izin UPDATE RLS jimpitan_warga_status. Detail: ${statusErr.message}`, 'Status Belum Tersinkron');
-                }
-            }
-
-            populateQuickPaymentDropdown();
-            renderDashboardData();
         }
 
         // --- MANAJEMEN TRANSAKSI (MODAL EDIT/ADD) ---
