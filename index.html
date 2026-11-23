@@ -942,7 +942,7 @@
                     <input type="number" id="modal-daily-nominal" required class="w-full p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 outline-none" placeholder="Cth: 2000">
                 </div>
                 <div id="modal-role-wrap">
-                    <label class="block text-xs font-semibold text-slate-400 mb-1">Hak Akses (Admin; Developer ditetapkan melalui prosedur aman)</label>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Role Pendaftaran</label>
                     <select id="modal-role" class="w-full p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 outline-none">
                         <option value="warga">Warga</option>
                         <option value="petugas">Petugas</option>
@@ -1009,6 +1009,8 @@
         // Developer mewarisi seluruh kemampuan operasional Admin, tetapi Admin tidak memperoleh akses teknis.
         function isDeveloper() { return !!currentUser && String(currentUser.role || '').toLowerCase() === 'developer'; }
         function isAdminOrDeveloper() { return !!currentUser && ['admin', 'developer'].includes(String(currentUser.role || '').toLowerCase()); }
+        // Developer memiliki gabungan hak Admin dan Petugas, termasuk scan dan pencatatan setoran.
+        function isPetugasOrDeveloper() { return !!currentUser && ['petugas', 'developer'].includes(String(currentUser.role || '').toLowerCase()); }
         function requireDeveloper(message = 'Pengaturan teknis hanya dapat diakses akun Developer.') {
             if (isDeveloper()) return true;
             showModal(message, 'Akses Ditolak');
@@ -3178,7 +3180,7 @@
             }
 
             const isAdmin = isAdminOrDeveloper();
-            const isPetugas = currentUser.role === 'petugas';
+            const isPetugas = isPetugasOrDeveloper();
             const isAdminOrPetugas = isAdmin || isPetugas;
             const myScheduleCard = document.getElementById('petugas-my-schedule-card');
             if (myScheduleCard) myScheduleCard.classList.toggle('hidden', !isPetugas);
@@ -3350,7 +3352,7 @@
 
         // --- SCAN & INPUT JIMPITAN ---
         function bukaHalamanScan() {
-            if (!currentUser || !['admin', 'petugas'].includes(String(currentUser.role || '').toLowerCase())) {
+            if (!currentUser || !['admin', 'petugas', 'developer'].includes(String(currentUser.role || '').toLowerCase())) {
                 showModal('Menu scan QR dan pencatatan jimpitan hanya dapat digunakan oleh Admin dan Petugas. Warga hanya dapat menampilkan QR miliknya.', 'Akses Ditolak');
                 return;
             }
@@ -3567,7 +3569,7 @@
 
         function onScanSuccess(decodedText) {
             stopCameraScanner();
-            if (!currentUser || !['admin', 'petugas'].includes(String(currentUser.role || '').toLowerCase())) {
+            if (!currentUser || !['admin', 'petugas', 'developer'].includes(String(currentUser.role || '').toLowerCase())) {
                 showModal('Scan QR hanya tersedia untuk Admin dan Petugas.', 'Akses Ditolak');
                 return;
             }
@@ -3973,7 +3975,7 @@
         }
 
         function notifyPetugasScheduleChanges(rows) {
-            if (!currentUser || currentUser.role !== 'petugas' || !Array.isArray(rows)) return;
+            if (!isPetugasOrDeveloper() || !Array.isArray(rows)) return;
             const uid = String(supabaseAuthSession?.user?.id || currentUser.authUid || currentUser.id || 'petugas');
             const storageKey = 'jimpitan_petugas_schedule_snapshot_' + uid;
             const summarize = row => ({
@@ -4025,7 +4027,7 @@
         async function loadMyPetugasSchedules() {
             const card = document.getElementById('petugas-my-schedule-card');
             const list = document.getElementById('my-petugas-schedule-list');
-            if (!currentUser || currentUser.role !== 'petugas' || !supabaseAuthSession || !card || !list) return;
+            if (!isPetugasOrDeveloper() || !supabaseAuthSession || !card || !list) return;
             card.classList.remove('hidden');
             try {
                 const uid = String(supabaseAuthSession.user?.id || currentUser.authUid || '');
@@ -4053,17 +4055,17 @@
         function startPetugasSchedulePolling() {
             if (petugasSchedulePollTimer) clearInterval(petugasSchedulePollTimer);
             petugasSchedulePollTimer = null;
-            if (currentUser?.role === 'petugas' && supabaseAuthSession) {
+            if (isPetugasOrDeveloper() && supabaseAuthSession) {
                 // Cek jadwal lebih rapat; hanya mengambil baris yang ditugaskan ke akun ini.
                 petugasSchedulePollTimer = setInterval(() => {
-                    if (currentUser?.role === 'petugas' && document.visibilityState !== 'hidden' && navigator.onLine) {
+                    if (isPetugasOrDeveloper() && document.visibilityState !== 'hidden' && navigator.onLine) {
                         loadMyPetugasSchedulesSafely();
                     }
                 }, 5000);
             }
         }
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible' && currentUser?.role === 'petugas') loadMyPetugasSchedulesSafely();
+            if (document.visibilityState === 'visible' && isPetugasOrDeveloper()) loadMyPetugasSchedulesSafely();
         });
 
         // --- PANEL KONTROL ADMIN & PETUGAS ---
@@ -4198,7 +4200,9 @@
             document.getElementById('modal-user-title').innerText = isNew ? 'Pendaftaran Anggota Baru' : 'Edit Data Anggota';
             // Mode tambah mengikuti field Pendaftaran Anggota di halaman Login.
             document.getElementById('modal-username-wrap').classList.toggle('hidden', isNew);
-            document.getElementById('modal-role-wrap').classList.toggle('hidden', isNew);
+            document.getElementById('modal-role-wrap').classList.toggle('hidden', false);
+            const adminRoleOption = document.querySelector('#modal-role option[value="admin"]');
+            if (adminRoleOption) { adminRoleOption.hidden = isNew; adminRoleOption.disabled = isNew; }
             document.getElementById('modal-status-wrap').classList.toggle('hidden', isNew);
             document.getElementById('modal-username').required = !isNew;
             document.getElementById('modal-email').required = isNew;
@@ -4221,6 +4225,7 @@
             } else {
                 document.getElementById('form-user-modal').reset();
                 document.getElementById('modal-name').value = '';
+                document.getElementById('modal-role').value = 'warga';
                 document.getElementById('modal-username').value = '';
                 document.getElementById('modal-email').value = '';
                 document.getElementById('modal-pass').value = '';
@@ -4246,6 +4251,7 @@
             const pass = document.getElementById('modal-pass').value;
             const address = document.getElementById('modal-address').value.trim();
             const dailyNominal = Number(document.getElementById('modal-daily-nominal').value);
+            const requestedRole = String(document.getElementById('modal-role').value || 'warga').toLowerCase();
             if (!name || !address || !Number.isFinite(dailyNominal) || dailyNominal < 0 || dailyNominal > 1000000) {
                 showModal('Periksa nama, alamat, dan nominal harian (Rp 0–1.000.000).', 'Data Tidak Valid'); return;
             }
@@ -4254,8 +4260,8 @@
             if (!id) {
                 if (!supabaseConfig || !supabaseAuthSession) { showModal('Tambah anggota memerlukan koneksi Supabase dan sesi Admin yang aktif.', 'Database Belum Siap'); return; }
                 if (!navigator.onLine) { showModal('Tambah anggota memerlukan koneksi internet.', 'Tidak Ada Internet'); return; }
-                if (!email || !/^\S+@\S+\.\S+$/.test(email) || pass.length < 8 || dailyNominal <= 0) {
-                    showModal('Isi email yang valid, password minimal 8 karakter, dan nominal jimpitan lebih dari Rp 0.', 'Data Pendaftaran Belum Valid'); return;
+                if (!['warga', 'petugas'].includes(requestedRole) || !email || !/^\S+@\S+\.\S+$/.test(email) || pass.length < 8 || dailyNominal <= 0) {
+                    showModal('Pilih role Warga atau Petugas, isi email yang valid, password minimal 8 karakter, dan nominal jimpitan lebih dari Rp 0.', 'Data Pendaftaran Belum Valid'); return;
                 }
                 const submit = document.querySelector('#form-user-modal button[type="submit"]');
                 if (submit) { submit.disabled = true; submit.textContent = 'Mengirim pendaftaran…'; }
@@ -4264,7 +4270,7 @@
                 try {
                     const signup = await authRequest('signup', {
                         email, password: pass,
-                        data: { display_name: name, requested_role: 'warga', address }
+                        data: { display_name: name, requested_role: requestedRole, address }
                     });
                     const authUser = signup.user || signup;
                     if (!authUser.id) throw new Error('Supabase tidak mengembalikan ID akun setelah pendaftaran.');
@@ -4278,7 +4284,7 @@
                     const inserted = await restRequest('jimpitan_registration_requests', '', {
                         method: 'POST',
                         headers: { 'Prefer': 'return=representation' },
-                        body: [{ auth_user_id: authUser.id, email, display_name: name, role: 'warga',
+                        body: [{ auth_user_id: authUser.id, email, display_name: name, role: requestedRole,
                             address, daily_nominal: dailyNominal, status: 'pending' }]
                     });
                     if (!Array.isArray(inserted) || inserted.length !== 1 || String(inserted[0].auth_user_id) !== String(authUser.id)) {
@@ -4286,7 +4292,7 @@
                     }
                     closeModalUser();
                     if (typeof loadRegistrationRequests === 'function') await loadRegistrationRequests();
-                    showModal('Pendaftaran anggota berhasil dikirim. Anggota akan ditambahkan ke data warga setelah disetujui administrator. Jika konfirmasi email aktif, anggota harus mengonfirmasi email terlebih dahulu.', 'Menunggu Persetujuan');
+                    showModal('Pendaftaran akun ' + (requestedRole === 'petugas' ? 'Petugas' : 'Warga') + ' berhasil dikirim. ' + (requestedRole === 'petugas' ? 'Akun Petugas akan aktif setelah disetujui administrator.' : 'Data warga akan ditambahkan setelah disetujui administrator.') + ' Jika konfirmasi email aktif, akun harus mengonfirmasi email terlebih dahulu.', 'Menunggu Persetujuan');
                 } catch (err) {
                     const note = authAccountCreated ? ' Akun Auth mungkin sudah dibuat; periksa Authentication > Users dan jimpitan_registration_requests sebelum mencoba ulang dengan email yang sama.' : '';
                     showModal('Pendaftaran anggota belum berhasil disimpan: ' + (err.message || err) + note, 'Pendaftaran Gagal');
@@ -4887,7 +4893,7 @@
         }
 
         function printAllQrCodes() {
-            if (!currentUser || !['admin', 'petugas'].includes(String(currentUser.role || '').toLowerCase())) {
+            if (!currentUser || !['admin', 'petugas', 'developer'].includes(String(currentUser.role || '').toLowerCase())) {
                 showModal('Fitur cetak seluruh QR hanya tersedia untuk Admin dan Petugas.', 'Akses Ditolak');
                 return;
             }
