@@ -90,24 +90,31 @@
             pointer-events: none;
         }
 
-        /* CSS Khusus Cetak QR Code Rumah */
+        /* Kartu QR anggota: ukuran kartu PVC standar dan cetak khusus */
+        #my-qrcode-render canvas, #my-qrcode-render img { width: 220px !important; height: 220px !important; image-rendering: pixelated; }
+        #modal-qrcode-canvas canvas, #modal-qrcode-canvas img { width: 280px !important; height: 280px !important; image-rendering: pixelated; }
+        #print-area { width: 100%; max-width: 390px; }
         @media print {
-            body * {
-                visibility: hidden;
-            }
-            #print-area, #print-area * {
-                visibility: visible;
-            }
+            @page { size: 90mm 60mm; margin: 0; }
+            html, body { width: 90mm !important; height: 60mm !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
+            body * { visibility: hidden !important; }
+            #print-area, #print-area * { visibility: visible !important; }
+            #modal-qrcode { display: block !important; position: static !important; inset: auto !important; padding: 0 !important; margin: 0 !important; background: #fff !important; }
+            #modal-qrcode > div { display: contents !important; }
             #print-area {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                margin: 0;
-                padding: 20px;
-                background: white !important;
-                color: black !important;
+                display: flex !important; position: absolute !important; left: 0 !important; top: 0 !important;
+                width: 85.6mm !important; height: 54mm !important; max-width: none !important;
+                margin: 3mm 2.2mm !important; padding: 3mm !important; gap: 3mm !important;
+                flex-direction: row !important; align-items: center !important; justify-content: flex-start !important;
+                border: .35mm solid #0f766e !important; border-radius: 2mm !important;
+                background: #fff !important; color: #111827 !important; box-shadow: none !important;
+                overflow: hidden !important;
             }
+            #print-area > div:first-child { display: none !important; }
+            #modal-qrcode-canvas { flex: 0 0 36mm !important; width: 36mm !important; height: 36mm !important; padding: 0 !important; }
+            #modal-qrcode-canvas canvas, #modal-qrcode-canvas img { display: block !important; width: 36mm !important; height: 36mm !important; }
+            #modal-qr-name { font-size: 12pt !important; line-height: 1.15 !important; margin: 0 0 2mm !important; overflow-wrap: anywhere !important; }
+            #modal-qr-info { font-size: 7pt !important; line-height: 1.3 !important; overflow-wrap: anywhere !important; }
             .no-print { display: none !important; }
         }
 
@@ -276,11 +283,24 @@
             
             <div class="bg-slate-900/85 backdrop-blur-xl p-8 rounded-3xl shadow-2xl w-full max-w-md border border-slate-800 relative z-10 my-auto">
                 <div class="text-center mb-6">
-                    <h2 class="text-2xl font-bold text-white">Pendaftaran Akun</h2>
-                    <p class="text-xs text-slate-400 mt-1">Isi formulir untuk mengajukan akun warga atau petugas. Data dikirim ke Supabase dan akun hanya aktif setelah disetujui admin.</p>
+                    <h2 id="register-title" class="text-2xl font-bold text-white">Pilih Jenis Pendaftaran</h2>
+                    <p id="register-description" class="text-xs text-slate-400 mt-1">Pendaftaran Anggota dan Admin menggunakan jalur terpisah.</p>
                 </div>
 
-                <form id="form-register" onsubmit="handleRegister(event)" class="space-y-4">
+                <div id="register-type-chooser" class="grid grid-cols-1 gap-3">
+                    <button type="button" onclick="startRegistration('warga')" class="w-full p-5 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-left transition">
+                        <span class="flex items-center gap-3"><i class="fa-solid fa-users text-2xl text-emerald-400"></i><span><strong class="block text-white text-sm">Pendaftaran Anggota</strong><small class="text-slate-400">Untuk warga/anggota yang akan menggunakan layanan Jimpitan Digital.</small></span></span>
+                    </button>
+                    <button type="button" onclick="startRegistration('admin')" class="w-full p-5 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-left transition">
+                        <span class="flex items-center gap-3"><i class="fa-solid fa-user-shield text-2xl text-indigo-400"></i><span><strong class="block text-white text-sm">Pendaftaran Admin</strong><small class="text-slate-400">Permohonan akses administrator, menunggu persetujuan Developer.</small></span></span>
+                    </button>
+                </div>
+
+                <form id="form-register" onsubmit="handleRegister(event)" class="space-y-4 hidden">
+                    <div class="flex items-center justify-between gap-2 rounded-xl bg-slate-950/70 border border-slate-800 p-3">
+                        <span id="register-mode-label" class="text-xs font-semibold text-emerald-300">Pendaftaran Anggota</span>
+                        <button type="button" onclick="backToRegistrationTypes()" class="text-xs text-slate-300 underline">Ganti jenis</button>
+                    </div>
                     <div>
                         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Nama Lengkap</label>
                         <input type="text" id="reg-name" required class="w-full px-4 py-3 rounded-xl bg-slate-950/50 border border-slate-800 focus:ring-2 focus:ring-emerald-500 text-sm text-slate-200 outline-none">
@@ -293,13 +313,7 @@
                         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Password (minimal 8 karakter)</label>
                         <input type="password" id="reg-pass" required minlength="8" autocomplete="new-password" class="w-full px-4 py-3 rounded-xl bg-slate-950/50 border border-slate-800 focus:ring-2 focus:ring-emerald-500 text-sm text-slate-200 outline-none">
                     </div>
-                    <div>
-                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Daftar Sebagai</label>
-                        <select id="reg-role" class="w-full px-4 py-3 rounded-xl bg-slate-950/50 border border-slate-800 focus:ring-2 focus:ring-emerald-500 text-sm text-slate-200 outline-none">
-                            <option value="warga" class="bg-slate-900">Warga</option>
-                            <option value="petugas" class="bg-slate-900">Petugas</option>
-                        </select>
-                    </div>
+                    <input type="hidden" id="reg-role" value="warga">
                     <div>
                         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Blok / Nomor Rumah</label>
                         <input type="text" id="reg-address" required class="w-full px-4 py-3 rounded-xl bg-slate-950/50 border border-slate-800 focus:ring-2 focus:ring-emerald-500 text-sm text-slate-200 outline-none" placeholder="Cth: Blok A No. 12">
@@ -907,17 +921,17 @@
                     <label class="block text-xs font-semibold text-slate-400 mb-1">Nama Lengkap</label>
                     <input type="text" id="modal-name" required class="w-full p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 outline-none">
                 </div>
-                <div>
+                <div id="modal-username-wrap">
                     <label class="block text-xs font-semibold text-slate-400 mb-1">Username / Kode Unik Warga</label>
                     <input type="text" id="modal-username" required class="w-full p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 outline-none" placeholder="Cth: W-001 / budi">
                 </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-400 mb-1">Email akun (wajib untuk login server)</label>
+                <div id="modal-email-wrap">
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Email akun</label>
                     <input type="email" id="modal-email" class="w-full p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 outline-none" placeholder="nama@contoh.com">
                 </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-400 mb-1">Password Baru (Isi jika ingin mereset)</label>
-                    <input type="text" id="modal-pass" class="w-full p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 outline-none" placeholder="Kosongkan jika tidak diubah">
+                <div id="modal-pass-wrap">
+                    <label id="modal-pass-label" class="block text-xs font-semibold text-slate-400 mb-1">Password Baru (Isi jika ingin mereset)</label>
+                    <input type="password" id="modal-pass" class="w-full p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 outline-none" placeholder="Kosongkan jika tidak diubah">
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-slate-400 mb-1">Blok / Rumah</label>
@@ -927,7 +941,7 @@
                     <label class="block text-xs font-semibold text-slate-400 mb-1">Nominal Jimpitan Wajib / Hari (Rp)</label>
                     <input type="number" id="modal-daily-nominal" required class="w-full p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 outline-none" placeholder="Cth: 2000">
                 </div>
-                <div>
+                <div id="modal-role-wrap">
                     <label class="block text-xs font-semibold text-slate-400 mb-1">Hak Akses (Admin; Developer ditetapkan melalui prosedur aman)</label>
                     <select id="modal-role" class="w-full p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 outline-none">
                         <option value="warga">Warga</option>
@@ -935,7 +949,7 @@
                         <option value="admin">Admin</option>
                     </select>
                 </div>
-                <div>
+                <div id="modal-status-wrap">
                     <label class="block text-xs font-semibold text-slate-400 mb-1">Status Iuran Hari Ini</label>
                     <select id="modal-status" class="w-full p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 outline-none">
                         <option value="Terisi">Terisi</option>
@@ -1764,9 +1778,21 @@
                 const localRows = Array.isArray(localPayload?.[key]) ? localPayload[key] : [];
                 const byKey = new Map();
                 cloudRows.forEach((row, index) => byKey.set(identity(row, index, 'cloud'), row));
-                // Local menang jika identitas sama, tetapi data cloud yang tidak ada di lokal tidak dibuang.
+                // Local menang jika identitas sama, tetapi data cloud yang tidak ada di lokal tetap dipertahankan.
                 localRows.forEach((row, index) => byKey.set(identity(row, index, 'local'), row));
                 merged[key] = Array.from(byKey.values());
+            }
+            // Penghapusan transaksi harus eksplisit. Tanpa tombstone, merge union di atas
+            // akan memasukkan kembali baris cloud yang sengaja dihapus dari perangkat ini.
+            const deletedIds = new Set([
+                ...(Array.isArray(cloudPayload?.deletedJimpitanIds) ? cloudPayload.deletedJimpitanIds : []),
+                ...(Array.isArray(localPayload?.deletedJimpitanIds) ? localPayload.deletedJimpitanIds : [])
+            ].map(v => String(v)));
+            merged.deletedJimpitanIds = Array.from(deletedIds);
+            if (deletedIds.size && Array.isArray(merged.jimpitan)) {
+                merged.jimpitan = merged.jimpitan.filter(row =>
+                    ![row?.id, row?.clientId, row?.client_id].some(v => v !== undefined && v !== null && deletedIds.has(String(v)))
+                );
             }
             if (cloudPayload?.__uiSettings || localPayload?.__uiSettings) {
                 merged.__uiSettings = {
@@ -1920,8 +1946,44 @@
                 throw new Error('ID anggota kanonis belum dapat diverifikasi. Hubungkan internet lalu coba kembali.');
             }
 
-            // Selalu verifikasi ke tabel sumber. Jangan langsung mempercayai memberId
-            // lokal karena snapshot lama dapat menyimpan ID yang sudah tidak berlaku.
+            // Petugas tidak diberi SELECT langsung ke jimpitan_warga_status oleh RLS.
+            // Untuk Petugas, verifikasi melalui direktori terbatas yang memang disediakan
+            // khusus bagi Petugas. RPC jimpitan_record_setoran akan memvalidasi ulang ID,
+            // status aktif, dan nominal di sisi database sebelum menyimpan transaksi.
+            const activeRoleForMemberCheck = String(currentUser?.role || '').trim().toLowerCase();
+            if (activeRoleForMemberCheck === 'petugas') {
+                const petugasCandidates = [
+                    user.memberId, user.member_id, user.member_id_akun,
+                    user.member_id_status, user.id
+                ].map(value => value == null ? '' : String(value).trim())
+                 .filter(value => value && !/^\d+$/.test(value));
+                if (!petugasCandidates.length) {
+                    throw new Error('ID anggota belum tersedia pada direktori Petugas. Muat ulang daftar anggota.');
+                }
+                for (const candidate of [...new Set(petugasCandidates)]) {
+                    const scopedRows = await restRequest(
+                        'jimpitan_petugas_members',
+                        'member_id=eq.' + encodeURIComponent(candidate) +
+                        '&is_active=eq.true&select=member_id,display_name,address&limit=2'
+                    );
+                    if (!Array.isArray(scopedRows)) {
+                        throw new Error('Direktori anggota Petugas tidak dapat diverifikasi. Muat ulang data Petugas.');
+                    }
+                    if (scopedRows.length === 1 && String(scopedRows[0].member_id).trim() === candidate) {
+                        user.memberId = candidate;
+                        user.member_id = candidate;
+                        return candidate;
+                    }
+                    if (scopedRows.length > 1) {
+                        throw new Error('ID ' + candidate + ' muncul lebih dari satu kali di direktori Petugas. Hubungi Admin.');
+                    }
+                }
+                throw new Error('ID anggota tidak ditemukan atau tidak aktif pada direktori Petugas. Muat ulang daftar anggota dan hubungi Admin jika masih terjadi.');
+            }
+
+            // Admin/Developer/Warga memverifikasi ke tabel sumber sesuai hak akses RLS.
+            // Jangan langsung mempercayai memberId lokal karena snapshot lama dapat
+            // menyimpan ID yang sudah tidak berlaku.
             const rows = await restRequest(
                 'jimpitan_warga_status',
                 'select=member_id,display_name,address'
@@ -2244,11 +2306,13 @@
             );
             if (!Array.isArray(rows)) throw new Error('Data transaksi petugas dari server bukan daftar.');
             if (!Array.isArray(db.jimpitan)) db.jimpitan = [];
-            const remote = rows.map(petugasTransactionToLocal);
+            const deletedIds = new Set((Array.isArray(db.deletedJimpitanIds) ? db.deletedJimpitanIds : []).map(v => String(v)));
+            // Tombstone dicek terhadap client_id SEBELUM transaksi sumber dimasukkan kembali.
+            // Inilah jalur yang sebelumnya membuat transaksi terhapus muncul lagi setiap polling.
+            const activeRows = rows.filter(row => !deletedIds.has(String(row.client_id || row.id || '')));
+            const remote = activeRows.map(petugasTransactionToLocal);
             const remoteClientIds = new Set(remote.map(x => String(x.id)));
-            // Hapus salinan lama dari sumber yang sama, lalu masukkan versi server.
-            // Transaksi kas/admin lain tetap dipertahankan.
-            const remoteMemberIds = new Set(rows.map(x => String(x.member_id || '')));
+            const remoteMemberIds = new Set(activeRows.map(x => String(x.member_id || '')));
             db.jimpitan = db.jimpitan.filter(tx => {
                 const txId = String(tx.clientId || tx.client_id || tx.id || '');
                 if (remoteClientIds.has(txId)) return false;
@@ -2611,16 +2675,31 @@
             return data;
         }
 
-        function updateRegistrationRoleFields() {
-            const role = document.getElementById('reg-role')?.value || 'warga';
+        function startRegistration(type) {
+            const role = type === 'admin' ? 'admin' : 'warga';
+            document.getElementById('reg-role').value = role;
+            document.getElementById('register-type-chooser').classList.add('hidden');
+            document.getElementById('form-register').classList.remove('hidden');
+            document.getElementById('register-title').textContent = role === 'admin' ? 'Pendaftaran Admin' : 'Pendaftaran Anggota';
+            document.getElementById('register-description').textContent = role === 'admin'
+                ? 'Isi data untuk mengajukan akun Admin. Akses hanya diberikan setelah disetujui Developer.'
+                : 'Isi data diri untuk mengajukan akun Anggota. Akun aktif setelah disetujui administrator.';
+            document.getElementById('register-mode-label').textContent = role === 'admin' ? 'Jalur khusus Admin' : 'Jalur Anggota';
             const nominalInput = document.getElementById('reg-daily-nominal');
-            const nominalLabel = nominalInput?.closest('div');
-            // Semua peran (admin, petugas, warga) adalah anggota yang wajib membayar iuran.
-            if (nominalLabel) nominalLabel.classList.remove('hidden');
-            if (nominalInput) nominalInput.required = true;
+            const nominalWrap = nominalInput?.closest('div');
+            if (nominalWrap) nominalWrap.classList.toggle('hidden', role === 'admin');
+            if (nominalInput) {
+                nominalInput.required = role !== 'admin';
+                if (role === 'admin') nominalInput.value = '0';
+                else if (!nominalInput.value || Number(nominalInput.value) <= 0) nominalInput.value = '2000';
+            }
         }
-        document.getElementById('reg-role')?.addEventListener('change', updateRegistrationRoleFields);
-        updateRegistrationRoleFields();
+        function backToRegistrationTypes() {
+            document.getElementById('form-register').classList.add('hidden');
+            document.getElementById('register-type-chooser').classList.remove('hidden');
+            document.getElementById('register-title').textContent = 'Pilih Jenis Pendaftaran';
+            document.getElementById('register-description').textContent = 'Pendaftaran Anggota dan Admin menggunakan jalur terpisah.';
+        }
 
         async function handleRegister(e) {
             e.preventDefault();
@@ -2629,8 +2708,8 @@
             const email = document.getElementById('reg-email').value.trim().toLowerCase();
             const password = document.getElementById('reg-pass').value;
             const address = document.getElementById('reg-address').value.trim();
-            const requestedRole = document.getElementById('reg-role').value === 'petugas' ? 'petugas' : 'warga';
-            const dailyNominal = Number(document.getElementById('reg-daily-nominal').value);
+            const requestedRole = ['admin', 'petugas'].includes(String(document.getElementById('reg-role').value || '').toLowerCase()) ? String(document.getElementById('reg-role').value).toLowerCase() : 'warga';
+            const dailyNominal = requestedRole === 'admin' ? 0 : Number(document.getElementById('reg-daily-nominal').value);
             if (!name || !address || !email || password.length < 8 || !Number.isFinite(dailyNominal) || dailyNominal < 0 || dailyNominal > 1000000) {
                 showModal('Periksa nama, email, alamat, password minimal 8 karakter, dan nominal harian (Rp 0–1.000.000).', 'Data Pendaftaran Belum Valid'); return;
             }
@@ -2655,7 +2734,8 @@
                 });
                 form.reset();
                 const nominalEl = document.getElementById('reg-daily-nominal'); if (nominalEl) nominalEl.value = '2000';
-                showModal('Pengajuan akun ' + (requestedRole === 'petugas' ? 'petugas' : 'warga') + ' terkirim ke Supabase. Akun belum dapat digunakan sampai admin menyetujui. Jika konfirmasi email diaktifkan, buka email konfirmasi terlebih dahulu.', 'Menunggu Persetujuan Admin');
+                backToRegistrationTypes();
+                showModal('Pengajuan akun ' + (requestedRole === 'admin' ? 'Admin' : requestedRole === 'petugas' ? 'Petugas' : 'Warga') + ' terkirim ke Supabase. Akun belum dapat digunakan sampai ' + (requestedRole === 'admin' ? 'Developer' : 'administrator') + ' menyetujui. Jika konfirmasi email diaktifkan, buka email konfirmasi terlebih dahulu.', 'Menunggu Persetujuan Admin');
                 switchPage('page-login');
             } catch (err) {
                 // Jika penulisan permohonan gagal setelah signup, pulihkan sesi sebelumnya.
@@ -2974,7 +3054,8 @@
                     const info = document.createElement('div');
                     const title = document.createElement('div'); title.className = 'font-semibold text-white'; title.textContent = req.display_name || 'Warga baru';
                     const detail = document.createElement('div'); detail.className = 'text-xs text-slate-400 mt-1';
-                    detail.textContent = `${req.role === 'petugas' ? 'Petugas' : 'Warga'} • ${req.email || ''} • Alamat pendaftaran: ${req.address || '-'}${req.role === 'petugas' ? '' : ' • Rp ' + Number(req.daily_nominal || 0).toLocaleString('id-ID') + '/hari'}`;
+                    const requestedLabel = req.role === 'admin' ? 'Admin' : req.role === 'petugas' ? 'Petugas' : 'Warga';
+                    detail.textContent = `${requestedLabel} • ${req.email || ''} • Alamat pendaftaran: ${req.address || '-'} • Rp ${Number(req.daily_nominal || 0).toLocaleString('id-ID')}/hari`;
                     info.append(title, detail);
                     card.append(info);
                     let memberSelect = null;
@@ -3024,12 +3105,17 @@
                 showModal('Hanya Admin atau Developer aktif yang boleh menyetujui pendaftaran.', 'Akses Ditolak');
                 return;
             }
-            const approvedRole = req.role === 'petugas' ? 'petugas' : 'warga';
+            const approvedRole = ['admin', 'petugas'].includes(String(req.role || '').toLowerCase()) ? String(req.role).toLowerCase() : 'warga';
+            if (approvedRole === 'admin' && !isDeveloper()) {
+                showModal('Hanya Developer aktif yang boleh menyetujui pendaftaran akun Admin.', 'Akses Ditolak');
+                return;
+            }
+            const approvedLabel = approvedRole === 'admin' ? 'Admin' : approvedRole === 'petugas' ? 'Petugas' : 'Warga';
             const selected = approvedRole === 'petugas' ? '' : (String(selectedMemberId || '').trim() || '__new__');
             const actionText = selected && selected !== '__new__'
                 ? ' dan menautkan ke anggota lama ' + selected
                 : (approvedRole === 'warga' ? ' serta membuat data anggota baru' : '');
-            if (!confirm('Setujui akun ' + (approvedRole === 'petugas' ? 'petugas ' : 'warga ') + (req.display_name || req.email) + actionText + '?')) return;
+            if (!confirm('Setujui akun ' + (approvedRole === 'admin' ? 'Admin ' : approvedRole === 'petugas' ? 'petugas ' : 'warga ') + (req.display_name || req.email) + actionText + '?')) return;
             try {
                 // Satu RPC SECURITY DEFINER memvalidasi peran pemanggil, membuat/menautkan
                 // status anggota, membuat profil, dan menyetujui permohonan dalam satu transaksi.
@@ -3044,7 +3130,7 @@
                 const outcome = Array.isArray(result) ? result[0] : result;
                 const memberId = outcome && outcome.member_id ? outcome.member_id : selected;
                 showModal(
-                    'Pendaftaran ' + (req.display_name || req.email) + ' berhasil disetujui. Akun ditautkan ke ID anggota ' + memberId + '. Data anggota dan riwayat transaksi yang sudah ada dipertahankan.',
+                    'Pendaftaran ' + approvedLabel + ' ' + (req.display_name || req.email) + ' berhasil disetujui. Akun ditautkan ke ID anggota ' + (memberId || '-') + '. Data anggota dan riwayat transaksi yang sudah ada dipertahankan.',
                     'Pendaftaran Disetujui'
                 );
                 await loadRegistrationRequests();
@@ -3220,8 +3306,8 @@
                 if (isAdminOrPetugas) {
                     actionTd = `
                         <td class="p-3.5 text-center space-x-2">
-                            <button onclick="editTransaction(${Number(item.id)})" class="text-indigo-400 hover:text-indigo-300 p-1 cursor-pointer" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
-                            ${isAdminOrDeveloper() ? `<button onclick="deleteTransaction(${Number(item.id)})" class="text-rose-400 hover:text-rose-300 p-1 cursor-pointer" title="Hapus"><i class="fa-solid fa-trash-can"></i></button>` : ''}
+                            <button onclick="editTransaction(decodeURIComponent('${encodeURIComponent(String(item.id))}'))" class="text-indigo-400 hover:text-indigo-300 p-1 cursor-pointer" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
+                            ${isAdminOrDeveloper() ? `<button onclick="deleteTransaction(decodeURIComponent('${encodeURIComponent(String(item.id))}'))" class="text-rose-400 hover:text-rose-300 p-1 cursor-pointer" title="Hapus"><i class="fa-solid fa-trash-can"></i></button>` : ''}
                         </td>
                     `;
                 } else {
@@ -3537,7 +3623,7 @@
             timeInput.value = nowParts.time;
 
             if (transId) {
-                const item = db.jimpitan.find(t => Number(t.id) === Number(transId));
+                const item = db.jimpitan.find(t => String(t.id) === String(transId) || String(t.clientId || t.client_id || '') === String(transId));
                 if (item) {
                     document.getElementById('modal-trans-type').value = item.type;
                     document.getElementById('modal-trans-name').value = item.name || item.description || '';
@@ -3574,7 +3660,7 @@
             label.innerText = type === 'Masuk' ? 'Keterangan / Nama Warga Setor' : 'Keterangan Pengeluaran / Keperluan Desa';
         }
 
-        function saveTransactionModal(e) {
+        async function saveTransactionModal(e) {
             e.preventDefault();
             if (!currentUser || !isAdminOrDeveloper()) { showModal('Petugas hanya dapat mencatat setoran jimpitan. Pengelolaan transaksi kas hanya untuk administrator.', 'Akses Ditolak'); return; }
             const id = document.getElementById('modal-trans-id').value;
@@ -3583,7 +3669,6 @@
             const timeVal = document.getElementById('modal-trans-time').value;
             const name = document.getElementById('modal-trans-name').value.trim();
             const amount = Number(document.getElementById('modal-trans-amount').value);
-
             if (!name || name.length > 250) { showModal('Keterangan wajib diisi dan maksimal 250 karakter.', 'Data Tidak Valid'); return; }
             if (!isValidAmount(amount)) { showModal('Nominal harus berupa angka lebih dari Rp 0 dan tidak melebihi batas sistem.', 'Data Tidak Valid'); return; }
             if (!['Masuk','Keluar'].includes(type)) { showModal('Jenis transaksi tidak valid.', 'Data Tidak Valid'); return; }
@@ -3591,36 +3676,78 @@
             if (!/^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/.test(timeVal)) { showModal('Jam transaksi tidak valid.', 'Data Tidak Valid'); return; }
             const transactionDateTime = parseLocalDateTime(dateVal, timeVal);
             if (Number.isNaN(transactionDateTime.getTime())) { showModal('Tanggal dan jam transaksi tidak valid.', 'Data Tidak Valid'); return; }
+            if (supabaseAuthSession && supabaseConfig && !navigator.onLine) { showModal('Perubahan transaksi membutuhkan internet agar dapat dipastikan tersimpan di Supabase. Data belum diubah.', 'Perlu Internet'); return; }
 
-            if (id) {
-                const item = db.jimpitan.find(t => Number(t.id) === Number(id));
-                if (item) {
-                    item.type = type;
-                    item.name = name;
-                    item.amount = amount;
-                    item.dateTime = makeRecordTimestamp(transactionDateTime);
-                    item.paymentDate = dateVal;
-                    item.editedBy = currentUser.name;
-                    logActivity(`Edit transaksi ID #${id}: ${name} (Rp ${amount.toLocaleString('id-ID')})`);
+            const previousDb = JSON.parse(JSON.stringify(db));
+            const wasDirty = localDirty;
+            const existing = id ? db.jimpitan.find(t => String(t.id) === String(id)) : null;
+            if (id && !existing) { showModal('Transaksi tidak ditemukan. Muat ulang data sebelum mengedit.', 'Data Tidak Ditemukan'); return; }
+            const isPetugasSource = !!(existing && (existing.source === 'petugas' || existing.clientId != null || existing.client_id != null));
+            let sourceBefore = null;
+            if (isPetugasSource && supabaseAuthSession && supabaseConfig) {
+                if (type !== 'Masuk') { showModal('Transaksi setoran petugas hanya dapat diubah sebagai Uang Masuk. Buat transaksi Uang Keluar terpisah untuk pengeluaran kas.', 'Jenis Transaksi'); return; }
+                const clientId = String(existing.clientId || existing.client_id || existing.id);
+                try {
+                    const rows = await restRequest('jimpitan_petugas_transactions', 'client_id=eq.' + encodeURIComponent(clientId) + '&select=*');
+                    if (!Array.isArray(rows) || rows.length !== 1) throw new Error('Baris sumber transaksi petugas tidak ditemukan tepat satu.');
+                    sourceBefore = rows[0];
+                    await restRequest('jimpitan_petugas_transactions', 'client_id=eq.' + encodeURIComponent(clientId), {
+                        method: 'PATCH', headers: { 'Prefer': 'return=minimal' },
+                        body: { amount, date_time: makeRecordTimestamp(transactionDateTime), processed_by: currentUser.name, display_name: name.replace(/^Setoran Jimpitan\s*/i, '').replace(/\s*\([^)]*\)\s*$/, '') }
+                    });
+                    const verify = await restRequest('jimpitan_petugas_transactions', 'client_id=eq.' + encodeURIComponent(clientId) + '&select=client_id,amount,date_time');
+                    if (!Array.isArray(verify) || verify.length !== 1 || Number(verify[0].amount) !== amount || Math.abs(Date.parse(verify[0].date_time) - Date.parse(makeRecordTimestamp(transactionDateTime))) > 1000) {
+                        throw new Error('Supabase belum mengonfirmasi perubahan transaksi petugas. Periksa izin UPDATE/SELECT dan RLS.');
+                    }
+                } catch (err) {
+                    showModal('Edit transaksi petugas gagal disimpan ke tabel sumber Supabase. ' + (err?.message || String(err)), 'Edit Gagal');
+                    return;
                 }
-            } else {
-                db.jimpitan.push({
-                    id: Date.now(),
-                    userId: null,
-                    name: name,
-                    amount: amount,
-                    type: type,
-                    dateTime: makeRecordTimestamp(transactionDateTime),
-                    paymentDate: dateVal,
-                    processedBy: currentUser.name
-                });
-                logActivity(`Tambah transaksi baru: [${type}] ${name} (Rp ${amount.toLocaleString('id-ID')})`);
             }
 
-            saveDB();
-            closeModalTransaction();
-            renderDashboardData();
-            showModal('Transaksi kas berhasil disimpan!', 'Sukses');
+            let savedTransactionId = id ? String(id) : null;
+            if (id) {
+                existing.type = type; existing.name = name; existing.amount = amount;
+                existing.dateTime = makeRecordTimestamp(transactionDateTime); existing.paymentDate = dateVal;
+                existing.editedBy = currentUser.name;
+            } else {
+                savedTransactionId = String(Date.now()) + String(Math.floor(Math.random() * 1000));
+                db.jimpitan.push({ id: savedTransactionId, userId: null, name, amount, type,
+                    dateTime: makeRecordTimestamp(transactionDateTime), paymentDate: dateVal, processedBy: currentUser.name });
+            }
+            if (!saveDB()) { db = previousDb; return; }
+            if (supabaseAuthSession && supabaseConfig) {
+                const synced = await runCloudSync('Admin');
+                let snapshotVerified = false;
+                if (synced && !localDirty) {
+                    try {
+                        const cloudRow = await fetchCloudState();
+                        const cloudItems = Array.isArray(cloudRow?.payload?.jimpitan) ? cloudRow.payload.jimpitan : [];
+                        const savedItem = id
+                            ? cloudItems.find(t => String(t.id) === String(id) || String(t.clientId || t.client_id || '') === String(id))
+                            : cloudItems.find(t => String(t.id) === String(savedTransactionId));
+                        snapshotVerified = !!savedItem &&
+                            String(savedItem.name || '') === String(name) &&
+                            Number(savedItem.amount) === amount &&
+                            String(savedItem.type || '') === String(type);
+                    } catch (verifyErr) {
+                        console.warn('Verifikasi snapshot transaksi gagal:', verifyErr);
+                    }
+                }
+                if (!synced || localDirty || !snapshotVerified) {
+                    if (sourceBefore) {
+                        try { await restRequest('jimpitan_petugas_transactions', 'client_id=eq.' + encodeURIComponent(String(sourceBefore.client_id)), { method: 'PATCH', headers: { 'Prefer': 'return=minimal' }, body: sourceBefore }); } catch (restoreErr) { console.error('Pemulihan transaksi sumber gagal:', restoreErr); }
+                    }
+                    db = previousDb; try { localStorage.setItem('jimpitan_db', JSON.stringify(db)); } catch (_) {}
+                    localDirty = wasDirty; if (!wasDirty) localStorage.removeItem('jimpitan_cloud_dirty');
+                    renderDashboardData();
+                    showModal('Transaksi belum dinyatakan berhasil karena penyimpanan snapshot belum terverifikasi di Supabase. Perubahan lokal dipulihkan. Detail: ' + (lastCloudSyncError?.message || 'Sinkronisasi gagal.'), 'Sinkronisasi Gagal');
+                    return;
+                }
+            }
+            logActivity(`${id ? 'Edit' : 'Tambah'} transaksi kas: ${name} (Rp ${amount.toLocaleString('id-ID')})`);
+            closeModalTransaction(); renderDashboardData();
+            showModal(supabaseAuthSession && supabaseConfig ? 'Transaksi berhasil disimpan dan dikonfirmasi di Supabase.' : 'Transaksi tersimpan di perangkat. Hubungkan Supabase untuk menyimpan perubahan ke cloud.', 'Sukses');
         }
 
         function editTransaction(id) {
@@ -3628,56 +3755,104 @@
         }
 
         async function deleteTransaction(id) {
-            if (!confirm('Apakah Anda yakin ingin menghapus transaksi ini?')) return;
-            const idx = db.jimpitan.findIndex(t => Number(t.id) === Number(id));
-            if (idx === -1) return;
-            const previousDb = JSON.parse(JSON.stringify(db));
+            if (!currentUser || !isAdminOrDeveloper()) {
+                showModal('Hanya Admin atau Developer yang dapat menghapus transaksi.', 'Akses Ditolak');
+                return;
+            }
+            const idx = db.jimpitan.findIndex(t =>
+                String(t.id) === String(id) ||
+                String(t.clientId || t.client_id || '') === String(id)
+            );
+            if (idx === -1) {
+                showModal('Transaksi tidak ditemukan pada data yang sedang tampil. Muat ulang data cloud sebelum mencoba lagi.', 'Data Tidak Ditemukan');
+                return;
+            }
+            if (!supabaseAuthSession || !supabaseConfig) {
+                showModal('Penghapusan transaksi membutuhkan koneksi Supabase. Hubungkan dan login sebagai Admin terlebih dahulu; data belum diubah.', 'Supabase Belum Terhubung');
+                return;
+            }
+            if (!navigator.onLine) {
+                showModal('Penghapusan membutuhkan koneksi internet agar data aplikasi dan Supabase berubah bersama. Data belum diubah.', 'Perlu Internet');
+                return;
+            }
             const deleted = db.jimpitan[idx];
-            let sourceRows = [];
+            const clientId = deleted.clientId || deleted.client_id ||
+                ((deleted.source === 'petugas') ? deleted.id : null);
+            const confirmText = 'Apakah Anda yakin ingin menghapus transaksi "' +
+                String(deleted.name || deleted.description || 'Transaksi') +
+                '" sebesar Rp ' + Number(deleted.amount || 0).toLocaleString('id-ID') +
+                '? Penghapusan akan dilakukan sekaligus pada snapshot aplikasi dan sumber setoran petugas bila ada.';
+            if (!confirm(confirmText)) return;
 
-            // Transaksi petugas juga tersimpan di tabel sumber cloud. Hapus sumbernya
-            // terlebih dahulu agar trigger tidak memasukkannya kembali ke snapshot.
-            if (supabaseAuthSession && supabaseConfig) {
-                if (!navigator.onLine) {
-                    showModal('Penghapusan transaksi ini memerlukan koneksi internet agar salinan sumber di cloud ikut terhapus. Data belum diubah.', 'Perlu Internet');
+            // Pastikan perubahan lokal yang lebih dahulu dibuat sudah terkirim sebelum RPC
+            // mengubah snapshot di server. Jangan menghapus bila sinkronisasi sebelumnya gagal.
+            if (cloudSyncDebounceTimer) {
+                clearTimeout(cloudSyncDebounceTimer);
+                cloudSyncDebounceTimer = null;
+            }
+            if (localDirty) {
+                const priorSync = await syncAllToCloud();
+                if (priorSync !== true || localDirty) {
+                    showModal('Transaksi belum dihapus karena ada perubahan sebelumnya yang belum tersinkron. Data lokal tetap aman. Detail: ' +
+                        (lastCloudSyncError?.message || 'Sinkronisasi sebelumnya belum selesai.'), 'Sinkronisasi Tertunda');
                     return;
                 }
+            }
+
+            try {
+                const rpcResult = await restRequest('rpc/jimpitan_admin_delete_cash_transaction', '', {
+                    method: 'POST',
+                    body: {
+                        p_transaction_id: String(deleted.id),
+                        p_client_id: clientId == null ? null : String(clientId)
+                    }
+                });
+                const outcome = Array.isArray(rpcResult) ? rpcResult[0] : rpcResult;
+                if (outcome && outcome.ok === false) {
+                    throw new Error(outcome.message || 'Server tidak mengonfirmasi penghapusan.');
+                }
+
+                // Baca ulang snapshot yang sudah diubah oleh transaksi SQL atomik.
+                const cloudRow = await fetchCloudState();
+                if (!cloudRow || !cloudRow.updated_at || !cloudRow.payload) {
+                    throw new Error('Perintah penghapusan dikirim, tetapi snapshot terbaru tidak dapat dibaca untuk verifikasi.');
+                }
+                const cloudItems = Array.isArray(cloudRow.payload.jimpitan) ? cloudRow.payload.jimpitan : [];
+                const tombstones = new Set((Array.isArray(cloudRow.payload.deletedJimpitanIds)
+                    ? cloudRow.payload.deletedJimpitanIds : []).map(v => String(v)));
+                const identifiers = [deleted.id, deleted.clientId, deleted.client_id, clientId]
+                    .filter(v => v !== undefined && v !== null && String(v) !== '');
+                const stillExists = cloudItems.some(row =>
+                    [row?.id, row?.clientId, row?.client_id].some(v =>
+                        v !== undefined && v !== null && identifiers.includes(String(v))
+                    )
+                );
+                const tombstoneExists = identifiers.some(v => tombstones.has(String(v)));
+                if (stillExists || !tombstoneExists) {
+                    throw new Error('Verifikasi belum cocok: transaksi masih ditemukan atau penanda penghapusan belum tersimpan di snapshot cloud.');
+                }
+
+                lastCloudUpdatedAt = cloudRow.updated_at;
+                replaceLocalDbFromCloud(cloudRow.payload);
+                renderDashboardData();
+                logActivity('Hapus transaksi kas: ' + String(deleted.name || deleted.description || deleted.id));
+                showModal('Transaksi berhasil dihapus dan diverifikasi pada Supabase. Data tidak akan dimasukkan kembali saat pemuatan ulang.', 'Terhapus');
+            } catch (err) {
+                // Bila server sudah menjalankan RPC tetapi pembacaan verifikasi gagal,
+                // muat ulang kondisi cloud; jangan menghidupkan kembali data lama secara lokal.
                 try {
-                    sourceRows = await restRequest('jimpitan_petugas_transactions', 'client_id=eq.' + encodeURIComponent(String(id)) + '&select=*');
-                    await restRequest('jimpitan_petugas_transactions', 'client_id=eq.' + encodeURIComponent(String(id)), {
-                        method: 'DELETE', headers: { 'Prefer': 'return=minimal' }
-                    });
-                } catch (err) {
-                    showModal('Transaksi belum dihapus karena sumber cloud gagal dibersihkan. Periksa izin SELECT/DELETE (RLS) pada tabel jimpitan_petugas_transactions. Detail: ' + (err && err.message ? err.message : String(err)), 'Penghapusan Gagal');
-                    return;
+                    const latest = await fetchCloudState();
+                    if (latest && latest.payload) {
+                        lastCloudUpdatedAt = latest.updated_at || lastCloudUpdatedAt;
+                        replaceLocalDbFromCloud(latest.payload);
+                        renderDashboardData();
+                    }
+                } catch (reloadErr) {
+                    console.warn('Muat ulang setelah kegagalan penghapusan:', reloadErr);
                 }
+                showModal('Penghapusan belum dapat diverifikasi. Aplikasi sudah memuat ulang data cloud bila tersedia. Periksa izin RPC dan RLS; jangan ulangi sebelum melihat apakah transaksi masih ada. Detail: ' +
+                    (err?.message || String(err)), 'Penghapusan Gagal');
             }
-
-            db.jimpitan.splice(idx, 1);
-            saveDB();
-            logActivity(`Hapus transaksi ID #${id} (${deleted.name})`);
-            renderDashboardData();
-            if (supabaseAuthSession && supabaseConfig) {
-                const syncOk = await syncAllToCloud();
-                if (syncOk !== true || localDirty) {
-                    // Batalkan secara konsisten jika snapshot belum tersimpan: pulihkan
-                    // sumber transaksi dan data lokal agar tidak terjadi kehilangan data.
-                    let restoreError = null;
-                    try {
-                        if (Array.isArray(sourceRows) && sourceRows.length) {
-                            await restRequest('jimpitan_petugas_transactions', '', {
-                                method: 'POST', headers: { 'Prefer': 'return=minimal' }, body: sourceRows
-                            });
-                        }
-                    } catch (e) { restoreError = e; }
-                    db = previousDb;
-                    saveDB();
-                    renderDashboardData();
-                    showModal('Penghapusan dibatalkan karena snapshot cloud belum terkonfirmasi; data lokal dipulihkan.' + (restoreError ? ' Pemulihan tabel sumber juga gagal: ' + restoreError.message : '') + ' Detail: ' + (lastCloudSyncError?.message || 'Sinkronisasi belum selesai.'), 'Sinkronisasi Gagal');
-                    return;
-                }
-            }
-            showModal('Transaksi kas berhasil dihapus dari aplikasi dan sumber cloud.', 'Terhapus');
         }
 
         // --- JADWAL PETUGAS PENGAMBILAN JIMPITAN (Supabase table + RLS) ---
@@ -4018,22 +4193,33 @@
                 const protectedUser = db.users.find(x => Number(x.id) === Number(userId));
                 if (protectedUser && String(protectedUser.role || '').toLowerCase() === 'developer') { showModal('Akun Developer dilindungi dan tidak dapat diedit dari menu anggota.', 'Aksi Ditolak'); return; }
             }
+            const isNew = !userId;
             document.getElementById('modal-user-id').value = userId || '';
-            document.getElementById('modal-user-title').innerText = userId ? 'Edit Data Anggota' : 'Tambah Anggota Baru';
+            document.getElementById('modal-user-title').innerText = isNew ? 'Pendaftaran Anggota Baru' : 'Edit Data Anggota';
+            // Mode tambah mengikuti field Pendaftaran Anggota di halaman Login.
+            document.getElementById('modal-username-wrap').classList.toggle('hidden', isNew);
+            document.getElementById('modal-role-wrap').classList.toggle('hidden', isNew);
+            document.getElementById('modal-status-wrap').classList.toggle('hidden', isNew);
+            document.getElementById('modal-username').required = !isNew;
+            document.getElementById('modal-email').required = isNew;
+            document.getElementById('modal-pass').required = isNew;
+            document.getElementById('modal-pass-label').textContent = isNew ? 'Password (minimal 8 karakter)' : 'Password Baru (Isi jika ingin mereset)';
+            document.getElementById('modal-pass').placeholder = isNew ? 'Minimal 8 karakter' : 'Kosongkan jika tidak diubah';
 
             if (userId) {
                 const u = db.users.find(x => Number(x.id) === Number(userId));
                 if (u) {
-                    document.getElementById('modal-name').value = u.name;
-                    document.getElementById('modal-username').value = u.username;
+                    document.getElementById('modal-name').value = u.name || '';
+                    document.getElementById('modal-username').value = u.username || '';
                     document.getElementById('modal-email').value = u.email || '';
                     document.getElementById('modal-pass').value = '';
-                    document.getElementById('modal-address').value = u.address;
+                    document.getElementById('modal-address').value = u.address || '';
                     document.getElementById('modal-daily-nominal').value = u.dailyNominal || 2000;
-                    document.getElementById('modal-role').value = u.role;
+                    document.getElementById('modal-role').value = u.role || 'warga';
                     document.getElementById('modal-status').value = u.status || 'Kosong';
                 }
             } else {
+                document.getElementById('form-user-modal').reset();
                 document.getElementById('modal-name').value = '';
                 document.getElementById('modal-username').value = '';
                 document.getElementById('modal-email').value = '';
@@ -4043,7 +4229,6 @@
                 document.getElementById('modal-role').value = 'warga';
                 document.getElementById('modal-status').value = 'Kosong';
             }
-
             document.getElementById('modal-user').classList.remove('hidden');
         }
 
@@ -4051,54 +4236,88 @@
             document.getElementById('modal-user').classList.add('hidden');
         }
 
-        function saveUserModal(e) {
+        async function saveUserModal(e) {
             e.preventDefault();
             if (!isAdminOrDeveloper()) { showModal('Hanya Admin atau Developer yang dapat mengelola anggota.', 'Akses Ditolak'); return; }
             const id = document.getElementById('modal-user-id').value;
             const name = document.getElementById('modal-name').value.trim();
             const username = document.getElementById('modal-username').value.trim();
-            const email = document.getElementById('modal-email').value.trim();
-            const pass = document.getElementById('modal-pass').value.trim();
+            const email = document.getElementById('modal-email').value.trim().toLowerCase();
+            const pass = document.getElementById('modal-pass').value;
             const address = document.getElementById('modal-address').value.trim();
             const dailyNominal = Number(document.getElementById('modal-daily-nominal').value);
+            if (!name || !address || !Number.isFinite(dailyNominal) || dailyNominal < 0 || dailyNominal > 1000000) {
+                showModal('Periksa nama, alamat, dan nominal harian (Rp 0–1.000.000).', 'Data Tidak Valid'); return;
+            }
+
+            // Tambah anggota memakai alur Auth + registration request yang sama dengan halaman Login.
+            if (!id) {
+                if (!supabaseConfig || !supabaseAuthSession) { showModal('Tambah anggota memerlukan koneksi Supabase dan sesi Admin yang aktif.', 'Database Belum Siap'); return; }
+                if (!navigator.onLine) { showModal('Tambah anggota memerlukan koneksi internet.', 'Tidak Ada Internet'); return; }
+                if (!email || !/^\S+@\S+\.\S+$/.test(email) || pass.length < 8 || dailyNominal <= 0) {
+                    showModal('Isi email yang valid, password minimal 8 karakter, dan nominal jimpitan lebih dari Rp 0.', 'Data Pendaftaran Belum Valid'); return;
+                }
+                const submit = document.querySelector('#form-user-modal button[type="submit"]');
+                if (submit) { submit.disabled = true; submit.textContent = 'Mengirim pendaftaran…'; }
+                const adminSession = supabaseAuthSession;
+                let authAccountCreated = false;
+                try {
+                    const signup = await authRequest('signup', {
+                        email, password: pass,
+                        data: { display_name: name, requested_role: 'warga', address }
+                    });
+                    const authUser = signup.user || signup;
+                    if (!authUser.id) throw new Error('Supabase tidak mengembalikan ID akun setelah pendaftaran.');
+                    authAccountCreated = true;
+
+                    // Jika Supabase mengembalikan sesi signup, gunakan hanya untuk membuat request
+                    // dengan auth_user_id yang sama. Sesi Admin dipulihkan setelahnya.
+                    const signupSession = signup.access_token && signup.refresh_token ? signup
+                        : (signup.session?.access_token && signup.session?.refresh_token ? signup.session : null);
+                    if (signupSession) storeAuthSession(signupSession);
+                    const inserted = await restRequest('jimpitan_registration_requests', '', {
+                        method: 'POST',
+                        headers: { 'Prefer': 'return=representation' },
+                        body: [{ auth_user_id: authUser.id, email, display_name: name, role: 'warga',
+                            address, daily_nominal: dailyNominal, status: 'pending' }]
+                    });
+                    if (!Array.isArray(inserted) || inserted.length !== 1 || String(inserted[0].auth_user_id) !== String(authUser.id)) {
+                        throw new Error('Supabase tidak mengonfirmasi penyimpanan tepat satu permohonan anggota. Periksa jimpitan_registration_requests sebelum mencoba ulang.');
+                    }
+                    closeModalUser();
+                    if (typeof loadRegistrationRequests === 'function') await loadRegistrationRequests();
+                    showModal('Pendaftaran anggota berhasil dikirim. Anggota akan ditambahkan ke data warga setelah disetujui administrator. Jika konfirmasi email aktif, anggota harus mengonfirmasi email terlebih dahulu.', 'Menunggu Persetujuan');
+                } catch (err) {
+                    const note = authAccountCreated ? ' Akun Auth mungkin sudah dibuat; periksa Authentication > Users dan jimpitan_registration_requests sebelum mencoba ulang dengan email yang sama.' : '';
+                    showModal('Pendaftaran anggota belum berhasil disimpan: ' + (err.message || err) + note, 'Pendaftaran Gagal');
+                } finally {
+                    storeAuthSession(adminSession || null);
+                    if (submit) { submit.disabled = false; submit.textContent = 'Simpan'; }
+                }
+                return;
+            }
+
             if (!isValidAmount(dailyNominal)) { showModal('Nominal harian harus lebih dari Rp 0 dan berupa angka yang valid.', 'Data Tidak Valid'); return; }
             const role = document.getElementById('modal-role').value;
             const status = document.getElementById('modal-status').value;
-
-            if (id) {
-                const u = db.users.find(x => Number(x.id) === Number(id));
-                if (u && String(u.role || '').toLowerCase() === 'developer') { showModal('Akun Developer dilindungi dan tidak dapat diubah dari menu anggota.', 'Aksi Ditolak'); return; }
-                if (u) {
-                    u.name = name;
-                    u.username = username;
-                    if(email) u.email = email;
-                    u.address = address;
-                    u.dailyNominal = dailyNominal;
-                    u.role = role;
-                    u.status = status;
-                    if (status === 'Terisi') u.lastPaidDate = getTodayDateString();
-                    logActivity(`Edit data warga: ${name}`);
-                }
-            } else {
-                if (db.users.some(x => String(x.username || '').toLowerCase() === username.toLowerCase())) {
-                    showModal('Username sudah ada. Gunakan username lain.', 'Peringatan');
-                    return;
-                }
-                const newUser = {
-                    id: Date.now(),
-                    name,
-                    username,
-                    email,
-                    address,
-                    dailyNominal,
-                    role,
-                    status,
-                    lastPaidDate: status === 'Terisi' ? getTodayDateString() : null
-                };
-                db.users.push(newUser);
-                logActivity(`Tambah anggota baru: ${name} (${role})`);
+            const existingAccount = db.users.find(x => String(x.id) === String(id));
+            if (String(role).toLowerCase() === 'admin' && (!existingAccount || !(existingAccount.authUid || existingAccount.auth_uid) || String(existingAccount.role || '').toLowerCase() !== 'admin')) {
+                showModal('Akun Admin tidak dapat dibuat sebagai data lokal saja. Daftarkan akun melalui formulir pendaftaran dengan peran Admin, lalu Developer menyetujuinya agar akun Auth dan profil Supabase dibuat dengan benar.', 'Pendaftaran Admin');
+                return;
             }
-
+            const u = db.users.find(x => Number(x.id) === Number(id));
+            if (u && String(u.role || '').toLowerCase() === 'developer') { showModal('Akun Developer dilindungi dan tidak dapat diubah dari menu anggota.', 'Aksi Ditolak'); return; }
+            if (u) {
+                u.name = name;
+                u.username = username;
+                if (email) u.email = email;
+                u.address = address;
+                u.dailyNominal = dailyNominal;
+                u.role = role;
+                u.status = status;
+                if (status === 'Terisi') u.lastPaidDate = getTodayDateString();
+                logActivity(`Edit data warga: ${name}`);
+            }
             saveDB();
             closeModalUser();
             renderUserTable();
@@ -4577,8 +4796,8 @@
 
             new QRCode(container, {
                 text: buildMemberQrPayload(currentUser),
-                width: 140,
-                height: 140,
+                width: 220,
+                height: 220,
                 colorDark: "#0f172a",
                 colorLight: "#ffffff"
             });
@@ -4630,9 +4849,10 @@
             const roleLabel = getQrRoleLabel(user.role);
             const address = String(user.address || '').trim();
             const isGenericAddress = ['pengurus', 'administrator', 'admin', 'petugas', 'warga'].includes(address.toLowerCase());
-            const detailParts = [roleLabel];
+            const memberId = user.memberId ?? user.member_id ?? user.member_id_akun ?? user.member_id_status ?? user.id;
+            const detailParts = [`ID Anggota: ${memberId}`, roleLabel];
             if (address && !isGenericAddress) detailParts.push(address);
-            if (user.username) detailParts.push(`ID: ${user.username}`);
+            if (user.username && String(user.username) !== String(memberId)) detailParts.push(`Username: ${user.username}`);
             document.getElementById('modal-qr-info').innerText = detailParts.join(' | ');
 
             const canvasContainer = document.getElementById('modal-qrcode-canvas');
@@ -4640,8 +4860,8 @@
 
             new QRCode(canvasContainer, {
                 text: buildMemberQrPayload(user),
-                width: 160,
-                height: 160,
+                width: 280,
+                height: 280,
                 colorDark: "#0f172a",
                 colorLight: "#ffffff"
             });
@@ -4654,7 +4874,16 @@
         }
 
         function printSingleQrModal() {
-            window.print();
+            const modal = document.getElementById('modal-qrcode');
+            const card = document.getElementById('print-area');
+            const qr = document.getElementById('modal-qrcode-canvas');
+            if (!card || !qr || !qr.querySelector('canvas, img')) {
+                showModal('QR Code belum selesai dibuat. Tekan Perbesar, tunggu QR tampil, lalu cetak kembali.', 'QR Belum Siap');
+                return;
+            }
+            if (modal) modal.classList.remove('hidden');
+            // Beri browser satu frame untuk menyiapkan layout cetak sebelum dialog print.
+            requestAnimationFrame(() => setTimeout(() => window.print(), 180));
         }
 
         function printAllQrCodes() {
