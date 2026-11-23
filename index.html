@@ -305,7 +305,6 @@
                         <select id="reg-role" class="w-full px-4 py-3 rounded-xl bg-slate-950/50 border border-slate-800 focus:ring-2 focus:ring-emerald-500 text-sm text-slate-200 outline-none">
                             <option value="warga" class="bg-slate-900">Warga</option>
                             <option value="petugas" class="bg-slate-900">Petugas</option>
-                            <option value="admin" class="bg-slate-900">Admin (menunggu persetujuan Developer)</option>
                         </select>
                     </div>
                     <div>
@@ -2687,7 +2686,7 @@
             const email = document.getElementById('reg-email').value.trim().toLowerCase();
             const password = document.getElementById('reg-pass').value;
             const address = document.getElementById('reg-address').value.trim();
-            const requestedRole = ['admin', 'petugas'].includes(String(document.getElementById('reg-role').value || '').toLowerCase()) ? String(document.getElementById('reg-role').value).toLowerCase() : 'warga';
+            const requestedRole = document.getElementById('reg-role').value === 'petugas' ? 'petugas' : 'warga';
             const dailyNominal = Number(document.getElementById('reg-daily-nominal').value);
             if (!name || !address || !email || password.length < 8 || !Number.isFinite(dailyNominal) || dailyNominal < 0 || dailyNominal > 1000000) {
                 showModal('Periksa nama, email, alamat, password minimal 8 karakter, dan nominal harian (Rp 0–1.000.000).', 'Data Pendaftaran Belum Valid'); return;
@@ -2713,7 +2712,7 @@
                 });
                 form.reset();
                 const nominalEl = document.getElementById('reg-daily-nominal'); if (nominalEl) nominalEl.value = '2000';
-                showModal('Pengajuan akun ' + (requestedRole === 'admin' ? 'Admin' : requestedRole === 'petugas' ? 'Petugas' : 'Warga') + ' terkirim ke Supabase. Akun belum dapat digunakan sampai ' + (requestedRole === 'admin' ? 'Developer' : 'administrator') + ' menyetujui. Jika konfirmasi email diaktifkan, buka email konfirmasi terlebih dahulu.', 'Menunggu Persetujuan Admin');
+                showModal('Pengajuan akun ' + (requestedRole === 'petugas' ? 'petugas' : 'warga') + ' terkirim ke Supabase. Akun belum dapat digunakan sampai admin menyetujui. Jika konfirmasi email diaktifkan, buka email konfirmasi terlebih dahulu.', 'Menunggu Persetujuan Admin');
                 switchPage('page-login');
             } catch (err) {
                 // Jika penulisan permohonan gagal setelah signup, pulihkan sesi sebelumnya.
@@ -3032,8 +3031,7 @@
                     const info = document.createElement('div');
                     const title = document.createElement('div'); title.className = 'font-semibold text-white'; title.textContent = req.display_name || 'Warga baru';
                     const detail = document.createElement('div'); detail.className = 'text-xs text-slate-400 mt-1';
-                    const requestedLabel = req.role === 'admin' ? 'Admin' : req.role === 'petugas' ? 'Petugas' : 'Warga';
-                    detail.textContent = `${requestedLabel} • ${req.email || ''} • Alamat pendaftaran: ${req.address || '-'} • Rp ${Number(req.daily_nominal || 0).toLocaleString('id-ID')}/hari`;
+                    detail.textContent = `${req.role === 'petugas' ? 'Petugas' : 'Warga'} • ${req.email || ''} • Alamat pendaftaran: ${req.address || '-'}${req.role === 'petugas' ? '' : ' • Rp ' + Number(req.daily_nominal || 0).toLocaleString('id-ID') + '/hari'}`;
                     info.append(title, detail);
                     card.append(info);
                     let memberSelect = null;
@@ -3083,17 +3081,12 @@
                 showModal('Hanya Admin atau Developer aktif yang boleh menyetujui pendaftaran.', 'Akses Ditolak');
                 return;
             }
-            const approvedRole = ['admin', 'petugas'].includes(String(req.role || '').toLowerCase()) ? String(req.role).toLowerCase() : 'warga';
-            if (approvedRole === 'admin' && !isDeveloper()) {
-                showModal('Hanya Developer aktif yang boleh menyetujui pendaftaran akun Admin.', 'Akses Ditolak');
-                return;
-            }
-            const approvedLabel = approvedRole === 'admin' ? 'Admin' : approvedRole === 'petugas' ? 'Petugas' : 'Warga';
+            const approvedRole = req.role === 'petugas' ? 'petugas' : 'warga';
             const selected = approvedRole === 'petugas' ? '' : (String(selectedMemberId || '').trim() || '__new__');
             const actionText = selected && selected !== '__new__'
                 ? ' dan menautkan ke anggota lama ' + selected
                 : (approvedRole === 'warga' ? ' serta membuat data anggota baru' : '');
-            if (!confirm('Setujui akun ' + (approvedRole === 'admin' ? 'Admin ' : approvedRole === 'petugas' ? 'petugas ' : 'warga ') + (req.display_name || req.email) + actionText + '?')) return;
+            if (!confirm('Setujui akun ' + (approvedRole === 'petugas' ? 'petugas ' : 'warga ') + (req.display_name || req.email) + actionText + '?')) return;
             try {
                 // Satu RPC SECURITY DEFINER memvalidasi peran pemanggil, membuat/menautkan
                 // status anggota, membuat profil, dan menyetujui permohonan dalam satu transaksi.
@@ -3108,7 +3101,7 @@
                 const outcome = Array.isArray(result) ? result[0] : result;
                 const memberId = outcome && outcome.member_id ? outcome.member_id : selected;
                 showModal(
-                    'Pendaftaran ' + approvedLabel + ' ' + (req.display_name || req.email) + ' berhasil disetujui. Akun ditautkan ke ID anggota ' + (memberId || '-') + '. Data anggota dan riwayat transaksi yang sudah ada dipertahankan.',
+                    'Pendaftaran ' + (req.display_name || req.email) + ' berhasil disetujui. Akun ditautkan ke ID anggota ' + memberId + '. Data anggota dan riwayat transaksi yang sudah ada dipertahankan.',
                     'Pendaftaran Disetujui'
                 );
                 await loadRegistrationRequests();
@@ -3733,104 +3726,67 @@
         }
 
         async function deleteTransaction(id) {
-            if (!currentUser || !isAdminOrDeveloper()) {
-                showModal('Hanya Admin atau Developer yang dapat menghapus transaksi.', 'Akses Ditolak');
-                return;
-            }
-            const idx = db.jimpitan.findIndex(t =>
-                String(t.id) === String(id) ||
-                String(t.clientId || t.client_id || '') === String(id)
-            );
-            if (idx === -1) {
-                showModal('Transaksi tidak ditemukan pada data yang sedang tampil. Muat ulang data cloud sebelum mencoba lagi.', 'Data Tidak Ditemukan');
-                return;
-            }
-            if (!supabaseAuthSession || !supabaseConfig) {
-                showModal('Penghapusan transaksi membutuhkan koneksi Supabase. Hubungkan dan login sebagai Admin terlebih dahulu; data belum diubah.', 'Supabase Belum Terhubung');
-                return;
-            }
-            if (!navigator.onLine) {
-                showModal('Penghapusan membutuhkan koneksi internet agar data aplikasi dan Supabase berubah bersama. Data belum diubah.', 'Perlu Internet');
-                return;
-            }
+            if (!confirm('Apakah Anda yakin ingin menghapus transaksi ini?')) return;
+            const idx = db.jimpitan.findIndex(t => String(t.id) === String(id));
+            if (idx === -1) return;
+            if (supabaseAuthSession && supabaseConfig && !navigator.onLine) { showModal('Penghapusan membutuhkan koneksi internet agar transaksi di Supabase ikut terhapus. Data belum diubah.', 'Perlu Internet'); return; }
+            const previousDb = JSON.parse(JSON.stringify(db));
             const deleted = db.jimpitan[idx];
-            const clientId = deleted.clientId || deleted.client_id ||
-                ((deleted.source === 'petugas') ? deleted.id : null);
-            const confirmText = 'Apakah Anda yakin ingin menghapus transaksi "' +
-                String(deleted.name || deleted.description || 'Transaksi') +
-                '" sebesar Rp ' + Number(deleted.amount || 0).toLocaleString('id-ID') +
-                '? Penghapusan akan dilakukan sekaligus pada snapshot aplikasi dan sumber setoran petugas bila ada.';
-            if (!confirm(confirmText)) return;
-
-            // Pastikan perubahan lokal yang lebih dahulu dibuat sudah terkirim sebelum RPC
-            // mengubah snapshot di server. Jangan menghapus bila sinkronisasi sebelumnya gagal.
-            if (cloudSyncDebounceTimer) {
-                clearTimeout(cloudSyncDebounceTimer);
-                cloudSyncDebounceTimer = null;
-            }
-            if (localDirty) {
-                const priorSync = await syncAllToCloud();
-                if (priorSync !== true || localDirty) {
-                    showModal('Transaksi belum dihapus karena ada perubahan sebelumnya yang belum tersinkron. Data lokal tetap aman. Detail: ' +
-                        (lastCloudSyncError?.message || 'Sinkronisasi sebelumnya belum selesai.'), 'Sinkronisasi Tertunda');
+            const isPetugasSource = deleted.source === 'petugas' || deleted.clientId != null || deleted.client_id != null;
+            const clientId = String(deleted.clientId || deleted.client_id || id);
+            let sourceRows = [];
+            if (supabaseAuthSession && supabaseConfig && isPetugasSource) {
+                try {
+                    sourceRows = await restRequest('jimpitan_petugas_transactions', 'client_id=eq.' + encodeURIComponent(clientId) + '&select=*');
+                    if (!Array.isArray(sourceRows) || sourceRows.length !== 1) throw new Error('Transaksi sumber tidak ditemukan tepat satu di Supabase.');
+                    await restRequest('jimpitan_petugas_transactions', 'client_id=eq.' + encodeURIComponent(clientId), {
+                        method: 'DELETE', headers: { 'Prefer': 'return=minimal' }
+                    });
+                    const remains = await restRequest('jimpitan_petugas_transactions', 'client_id=eq.' + encodeURIComponent(clientId) + '&select=client_id');
+                    if (!Array.isArray(remains) || remains.length !== 0) throw new Error('Supabase masih mengembalikan transaksi setelah perintah DELETE. Periksa policy RLS DELETE.');
+                } catch (err) {
+                    showModal('Transaksi belum dihapus dari aplikasi karena Supabase tidak mengonfirmasi penghapusan pada jimpitan_petugas_transactions. Periksa izin SELECT/DELETE dan RLS. Detail: ' + (err?.message || String(err)), 'Penghapusan Gagal');
                     return;
                 }
             }
-
-            try {
-                const rpcResult = await restRequest('rpc/jimpitan_admin_delete_cash_transaction', '', {
-                    method: 'POST',
-                    body: {
-                        p_transaction_id: String(deleted.id),
-                        p_client_id: clientId == null ? null : String(clientId)
+            db.jimpitan.splice(idx, 1);
+            if (!Array.isArray(db.deletedJimpitanIds)) db.deletedJimpitanIds = [];
+            [id, deleted.clientId, deleted.client_id].filter(v => v !== undefined && v !== null).forEach(v => {
+                if (!db.deletedJimpitanIds.some(x => String(x) === String(v))) db.deletedJimpitanIds.push(String(v));
+            });
+            if (!saveDB()) { db = previousDb; return; }
+            if (supabaseAuthSession && supabaseConfig) {
+                const synced = await runCloudSync('Admin');
+                let deleteVerified = false;
+                if (synced && !localDirty) {
+                    try {
+                        const cloudRow = await fetchCloudState();
+                        const cloudItems = Array.isArray(cloudRow?.payload?.jimpitan) ? cloudRow.payload.jimpitan : [];
+                        const cloudDeletedIds = new Set((Array.isArray(cloudRow?.payload?.deletedJimpitanIds) ? cloudRow.payload.deletedJimpitanIds : []).map(v => String(v)));
+                        const stillExists = cloudItems.some(row =>
+                            [row?.id, row?.clientId, row?.client_id].some(v => v !== undefined && v !== null &&
+                                [String(id), String(deleted.clientId || ''), String(deleted.client_id || '')].includes(String(v)))
+                        );
+                        const tombstoneExists = [id, deleted.clientId, deleted.client_id]
+                            .filter(v => v !== undefined && v !== null)
+                            .some(v => cloudDeletedIds.has(String(v)));
+                        deleteVerified = !stillExists && tombstoneExists;
+                    } catch (verifyErr) {
+                        console.warn('Verifikasi penghapusan snapshot gagal:', verifyErr);
                     }
-                });
-                const outcome = Array.isArray(rpcResult) ? rpcResult[0] : rpcResult;
-                if (outcome && outcome.ok === false) {
-                    throw new Error(outcome.message || 'Server tidak mengonfirmasi penghapusan.');
                 }
-
-                // Baca ulang snapshot yang sudah diubah oleh transaksi SQL atomik.
-                const cloudRow = await fetchCloudState();
-                if (!cloudRow || !cloudRow.updated_at || !cloudRow.payload) {
-                    throw new Error('Perintah penghapusan dikirim, tetapi snapshot terbaru tidak dapat dibaca untuk verifikasi.');
+                if (!synced || localDirty || !deleteVerified) {
+                    let restoreError = null;
+                    try { if (sourceRows.length) await restRequest('jimpitan_petugas_transactions', '', { method: 'POST', headers: { 'Prefer': 'return=minimal' }, body: sourceRows }); }
+                    catch (e) { restoreError = e; }
+                    db = previousDb; try { localStorage.setItem('jimpitan_db', JSON.stringify(db)); } catch (_) {}
+                    localDirty = false; localStorage.removeItem('jimpitan_cloud_dirty'); renderDashboardData();
+                    showModal('Penghapusan dibatalkan karena snapshot Supabase belum terverifikasi benar-benar tidak memuat transaksi tersebut. Data lokal dipulihkan.' + (restoreError ? ' Pemulihan sumber cloud juga gagal: ' + restoreError.message : '') + ' Detail: ' + (lastCloudSyncError?.message || 'Sinkronisasi gagal.'), 'Sinkronisasi Gagal');
+                    return;
                 }
-                const cloudItems = Array.isArray(cloudRow.payload.jimpitan) ? cloudRow.payload.jimpitan : [];
-                const tombstones = new Set((Array.isArray(cloudRow.payload.deletedJimpitanIds)
-                    ? cloudRow.payload.deletedJimpitanIds : []).map(v => String(v)));
-                const identifiers = [deleted.id, deleted.clientId, deleted.client_id, clientId]
-                    .filter(v => v !== undefined && v !== null && String(v) !== '');
-                const stillExists = cloudItems.some(row =>
-                    [row?.id, row?.clientId, row?.client_id].some(v =>
-                        v !== undefined && v !== null && identifiers.includes(String(v))
-                    )
-                );
-                const tombstoneExists = identifiers.some(v => tombstones.has(String(v)));
-                if (stillExists || !tombstoneExists) {
-                    throw new Error('Verifikasi belum cocok: transaksi masih ditemukan atau penanda penghapusan belum tersimpan di snapshot cloud.');
-                }
-
-                lastCloudUpdatedAt = cloudRow.updated_at;
-                replaceLocalDbFromCloud(cloudRow.payload);
-                renderDashboardData();
-                logActivity('Hapus transaksi kas: ' + String(deleted.name || deleted.description || deleted.id));
-                showModal('Transaksi berhasil dihapus dan diverifikasi pada Supabase. Data tidak akan dimasukkan kembali saat pemuatan ulang.', 'Terhapus');
-            } catch (err) {
-                // Bila server sudah menjalankan RPC tetapi pembacaan verifikasi gagal,
-                // muat ulang kondisi cloud; jangan menghidupkan kembali data lama secara lokal.
-                try {
-                    const latest = await fetchCloudState();
-                    if (latest && latest.payload) {
-                        lastCloudUpdatedAt = latest.updated_at || lastCloudUpdatedAt;
-                        replaceLocalDbFromCloud(latest.payload);
-                        renderDashboardData();
-                    }
-                } catch (reloadErr) {
-                    console.warn('Muat ulang setelah kegagalan penghapusan:', reloadErr);
-                }
-                showModal('Penghapusan belum dapat diverifikasi. Aplikasi sudah memuat ulang data cloud bila tersedia. Periksa izin RPC dan RLS; jangan ulangi sebelum melihat apakah transaksi masih ada. Detail: ' +
-                    (err?.message || String(err)), 'Penghapusan Gagal');
             }
+            logActivity(`Hapus transaksi ID #${id} (${deleted.name})`); renderDashboardData();
+            showModal(supabaseAuthSession && supabaseConfig ? 'Transaksi berhasil dihapus dari aplikasi dan Supabase.' : 'Transaksi dihapus dari perangkat. Penghapusan cloud memerlukan koneksi Supabase.', 'Terhapus');
         }
 
         // --- JADWAL PETUGAS PENGAMBILAN JIMPITAN (Supabase table + RLS) ---
@@ -4217,11 +4173,6 @@
             if (!isValidAmount(dailyNominal)) { showModal('Nominal harian harus lebih dari Rp 0 dan berupa angka yang valid.', 'Data Tidak Valid'); return; }
             const role = document.getElementById('modal-role').value;
             const status = document.getElementById('modal-status').value;
-            const existingAccount = id ? db.users.find(x => String(x.id) === String(id)) : null;
-            if (String(role).toLowerCase() === 'admin' && (!existingAccount || !(existingAccount.authUid || existingAccount.auth_uid) || String(existingAccount.role || '').toLowerCase() !== 'admin')) {
-                showModal('Akun Admin tidak dapat dibuat sebagai data lokal saja. Daftarkan akun melalui formulir pendaftaran dengan peran Admin, lalu Developer menyetujuinya agar akun Auth dan profil Supabase dibuat dengan benar.', 'Pendaftaran Admin');
-                return;
-            }
 
             if (id) {
                 const u = db.users.find(x => Number(x.id) === Number(id));
