@@ -289,7 +289,10 @@
 
                 <div id="register-type-chooser" class="grid grid-cols-1 gap-3">
                     <button type="button" onclick="startRegistration('warga')" class="w-full p-5 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-left transition">
-                        <span class="flex items-center gap-3"><i class="fa-solid fa-users text-2xl text-emerald-400"></i><span><strong class="block text-white text-sm">Pendaftaran Anggota</strong><small class="text-slate-400">Untuk warga/anggota yang akan menggunakan layanan Jimpitan Digital.</small></span></span>
+                        <span class="flex items-center gap-3"><i class="fa-solid fa-users text-2xl text-emerald-400"></i><span><strong class="block text-white text-sm">Pendaftaran Warga</strong><small class="text-slate-400">Untuk warga/anggota yang akan menggunakan layanan Jimpitan Digital.</small></span></span>
+                    </button>
+                    <button type="button" onclick="startRegistration('petugas')" class="w-full p-5 rounded-2xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-left transition">
+                        <span class="flex items-center gap-3"><i class="fa-solid fa-clipboard-user text-2xl text-amber-400"></i><span><strong class="block text-white text-sm">Pendaftaran Petugas</strong><small class="text-slate-400">Ajukan akun Petugas untuk pencatatan dan pengelolaan setoran jimpitan. Menunggu persetujuan administrator.</small></span></span>
                     </button>
                     <button type="button" onclick="startRegistration('admin')" class="w-full p-5 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-left transition">
                         <span class="flex items-center gap-3"><i class="fa-solid fa-user-shield text-2xl text-indigo-400"></i><span><strong class="block text-white text-sm">Pendaftaran Admin</strong><small class="text-slate-400">Permohonan akses administrator, menunggu persetujuan Developer.</small></span></span>
@@ -2678,15 +2681,17 @@
         }
 
         function startRegistration(type) {
-            const role = type === 'admin' ? 'admin' : 'warga';
+            const role = ['admin', 'petugas'].includes(String(type || '').toLowerCase()) ? String(type).toLowerCase() : 'warga';
             document.getElementById('reg-role').value = role;
             document.getElementById('register-type-chooser').classList.add('hidden');
             document.getElementById('form-register').classList.remove('hidden');
-            document.getElementById('register-title').textContent = role === 'admin' ? 'Pendaftaran Admin' : 'Pendaftaran Anggota';
+            document.getElementById('register-title').textContent = role === 'admin' ? 'Pendaftaran Admin' : role === 'petugas' ? 'Pendaftaran Petugas' : 'Pendaftaran Warga';
             document.getElementById('register-description').textContent = role === 'admin'
                 ? 'Isi data untuk mengajukan akun Admin. Akses hanya diberikan setelah disetujui Developer.'
-                : 'Isi data diri untuk mengajukan akun Anggota. Akun aktif setelah disetujui administrator.';
-            document.getElementById('register-mode-label').textContent = role === 'admin' ? 'Jalur khusus Admin' : 'Jalur Anggota';
+                : role === 'petugas'
+                    ? 'Isi data untuk mengajukan akun Petugas. Akses aktif setelah disetujui administrator.'
+                    : 'Isi data diri untuk mengajukan akun Warga. Akun aktif setelah disetujui administrator.';
+            document.getElementById('register-mode-label').textContent = role === 'admin' ? 'Jalur khusus Admin' : role === 'petugas' ? 'Jalur Petugas' : 'Jalur Warga';
             const nominalInput = document.getElementById('reg-daily-nominal');
             const nominalWrap = nominalInput?.closest('div');
             if (nominalWrap) nominalWrap.classList.toggle('hidden', role === 'admin');
@@ -2700,7 +2705,7 @@
             document.getElementById('form-register').classList.add('hidden');
             document.getElementById('register-type-chooser').classList.remove('hidden');
             document.getElementById('register-title').textContent = 'Pilih Jenis Pendaftaran';
-            document.getElementById('register-description').textContent = 'Pendaftaran Anggota dan Admin menggunakan jalur terpisah.';
+            document.getElementById('register-description').textContent = 'Pilih pendaftaran Warga, Petugas, atau Admin sesuai kebutuhan.';
         }
 
         async function handleRegister(e) {
