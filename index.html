@@ -1906,36 +1906,75 @@
         // ID numerik lokal (mis. 1, 2, 3) tidak boleh dikirim sebagai member_id Supabase.
         async function ensureCanonicalMemberId(user) {
             if (!user || typeof user !== 'object') throw new Error('Data anggota tidak valid.');
-            const candidates = [user.memberId, user.member_id, user.member_id_akun, user.member_id_status, user.id]
-                .map(value => value == null ? '' : String(value).trim())
-                .filter(Boolean);
-            const canonical = candidates.find(value => !/^\d+$/.test(value));
-            if (canonical) {
-                user.memberId = canonical;
-                return canonical;
-            }
             if (!supabaseConfig || !supabaseAuthSession || !navigator.onLine) {
-                throw new Error('ID anggota kanonis belum tersedia. Hubungkan internet dan muat ulang data anggota sebelum mencatat setoran.');
+                throw new Error('ID anggota kanonis belum dapat diverifikasi. Hubungkan internet lalu coba kembali.');
             }
-            const rows = await restRequest('jimpitan_warga_status',
-                'select=member_id,display_name,address');
+
+            // Selalu verifikasi ke tabel sumber. Jangan langsung mempercayai memberId
+            // lokal karena snapshot lama dapat menyimpan ID yang sudah tidak berlaku.
+            const rows = await restRequest(
+                'jimpitan_warga_status',
+                'select=member_id,display_name,address'
+            );
             if (!Array.isArray(rows)) throw new Error('Data ID anggota dari Supabase tidak valid.');
-            const nameKey = normalizeMemberMatch(user.name || user.display_name);
-            const addressKey = normalizeMemberMatch(user.address);
-            if (!nameKey || !addressKey) throw new Error('Nama dan alamat anggota belum cukup untuk memverifikasi ID kanonis.');
-            const matches = rows.filter(row =>
-                normalizeMemberMatch(row.display_name) === nameKey &&
-                normalizeMemberMatch(row.address) === addressKey &&
-                row.member_id != null && String(row.member_id).trim() !== '' &&
+
+            const validRows = rows.filter(row =>
+                row && row.member_id != null &&
+                String(row.member_id).trim() !== '' &&
                 !/^\d+$/.test(String(row.member_id).trim())
             );
+            // Dahulukan ID anggota yang tersimpan pada profil. Jika belum ada,
+            // coba ID akun/user (bila berupa ID non-numerik); ID lokal numerik
+            // seperti 1, 2, 3 sengaja diabaikan agar tidak salah dianggap member_id.
+            const candidates = [
+                user.memberId, user.member_id, user.member_id_akun, user.member_id_status,
+                user.userId, user.user_id, user.authUserId, user.auth_user_id, user.id
+            ]
+                .map(value => value == null ? '' : String(value).trim())
+                .filter(value => value && !/^\d+$/.test(value));
+
+            // ID yang tersimpan pada profil lokal hanya diterima jika benar-benar
+            // menunjuk tepat satu baris yang ada di jimpitan_warga_status.
+            for (const candidate of candidates) {
+                const idMatches = validRows.filter(row => String(row.member_id).trim() === candidate);
+                if (idMatches.length === 1) {
+                    user.memberId = candidate;
+                    user.member_id = candidate;
+                    return candidate;
+                }
+                if (idMatches.length > 1) {
+                    throw new Error('ID ' + candidate + ' terduplikasi di jimpitan_warga_status. Admin harus memperbaiki data terlebih dahulu.');
+                }
+            }
+
+            // ID lokal numerik bukan ID Supabase. Pulihkan hanya dari identitas
+            // nama/alamat yang cocok secara unik; tidak membuat atau mengubah baris.
+            const nameKey = normalizeMemberMatch(user.name || user.display_name);
+            const addressKey = normalizeMemberMatch(user.address);
+            if (!nameKey) throw new Error('Nama anggota belum tersedia untuk mencari ID kanonis.');
+
+            let matches = validRows.filter(row =>
+                normalizeMemberMatch(row.display_name) === nameKey
+            );
+
+            // Bila alamat tersedia pada kedua sisi, alamat wajib cocok.
+            // Bila alamat lokal kosong, nama hanya boleh dipakai jika unik.
+            if (addressKey) {
+                matches = matches.filter(row => {
+                    const rowAddressKey = normalizeMemberMatch(row.address);
+                    return rowAddressKey && rowAddressKey === addressKey;
+                });
+            }
+
             if (matches.length !== 1) {
                 throw new Error(matches.length > 1
-                    ? 'Ditemukan lebih dari satu ID dengan nama dan alamat anggota yang sama. Admin harus memeriksa data terlebih dahulu.'
-                    : 'ID anggota kanonis tidak ditemukan di jimpitan_warga_status. Setoran tidak dikirim agar ID lama tidak muncul kembali.');
+                    ? 'Ditemukan lebih dari satu anggota dengan identitas yang sama. Admin harus memeriksa nama, alamat, dan member_id terlebih dahulu.'
+                    : 'Anggota "' + String(user.name || user.display_name || '') + '" tidak ditemukan secara cocok di jimpitan_warga_status. Admin perlu menyamakan member_id dan data nama/alamat anggota. Setoran tidak dikirim.');
             }
+
             const memberId = String(matches[0].member_id).trim();
             user.memberId = memberId;
+            user.member_id = memberId;
             return memberId;
         }
 
