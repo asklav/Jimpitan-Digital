@@ -457,7 +457,7 @@
                             </div>
                             <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-sm relative overflow-hidden">
                                 <div class="absolute right-4 top-4 text-indigo-500/10 text-4xl"><i class="fa-solid fa-users"></i></div>
-                                <p id="label-stat-card-4" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Warga</p>
+                                <p id="label-stat-card-4" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Anggota</p>
                                 <h3 id="stat-total-warga" class="text-xl font-extrabold text-white mt-2">0</h3>
                             </div>
                         </div>
@@ -2066,7 +2066,7 @@
                 : '—';
 
             const own = summary.warga_sendiri;
-            if (own && currentUser && currentUser.role === 'warga') {
+            if (own && currentUser && ['admin', 'petugas', 'warga'].includes(String(currentUser.role || '').toLowerCase())) {
                 currentUser.status = own.status || currentUser.status;
                 currentUser.lastPaidDate = own.last_paid_date || currentUser.lastPaidDate;
                 currentUser.memberId = String(own.member_id || currentUser.memberId || currentUser.id || '');
@@ -2864,56 +2864,56 @@
                     let address = (request && request.address) || (user && user.address) || (profile.role === 'admin' ? 'Administrator' : '');
                     let memberId = profile.member_id || (request && request.member_id) || null;
 
-                    if (profile.role === 'warga') {
-                        // Gunakan ID kanonis dari status yang sudah ada. Pemulihan pendaftaran
-                        // di atas membuat baris status untuk akun approved yang belum memilikinya.
-                        let existingWarga = wargaStatusRows.find(row => String(row.member_id) === String(memberId || ''));
-                        if (!existingWarga) existingWarga = findUniqueExistingWarga(wargaStatusRows, displayName, address);
-                        if (!existingWarga) {
-                            console.warn('Akun warga belum ditautkan: tidak ditemukan baris status yang aman untuk ID akun.', profile.user_id);
-                            continue;
-                        }
-                        const canonicalMemberId = String(existingWarga.member_id);
-                        // Data status Supabase menjadi sumber utama nama/alamat/nominal warga.
-                        displayName = existingWarga.display_name || displayName;
-                        address = existingWarga.address || address;
-                        memberId = canonicalMemberId;
-                        if (String(profile.member_id || '') !== canonicalMemberId) {
-                            await restRequest('jimpitan_admins', 'user_id=eq.' + encodeURIComponent(profile.user_id), {
-                                method: 'PATCH', headers: { 'Prefer': 'return=minimal' }, body: { member_id: canonicalMemberId }
-                            });
-                            memberId = canonicalMemberId;
-                        }
-                        // Cari data lokal yang sama berdasarkan ID kanonis, lalu nama+alamat unik.
-                        user = db.users.find(u => String(u.memberId ?? u.member_id ?? u.id) === canonicalMemberId) ||
-                            db.users.find(u => normalizeMemberMatch(u.name || u.display_name) === normalizeMemberMatch(existingWarga.display_name) &&
-                                normalizeMemberMatch(u.address) === normalizeMemberMatch(existingWarga.address));
-                        // Bila baris status ada di Supabase tetapi belum ada di snapshot lokal,
-                        // tetap buat representasi lokal agar muncul di tabel/dashboard aplikasi.
-                        // Ini tidak membuat baris Supabase baru dan tidak mengubah transaksi lama.
-                    } else {
-                        user = user || (memberId ? db.users.find(u => String(u.memberId ?? u.member_id ?? u.id) === String(memberId)) : null);
+                    // Semua role wajib memiliki baris status dengan ID kanonis yang sama.
+                    // Untuk admin/petugas, jangan menebak ID dari nama: harus cocok persis.
+                    if (!memberId) {
+                        console.warn('Profil aktif belum memiliki member_id kanonis:', profile.user_id, profile.role);
+                        continue;
                     }
+                    let existingWarga = wargaStatusRows.find(row => String(row.member_id).trim() === String(memberId).trim());
+                    // Pemulihan berdasarkan nama/alamat hanya dipakai untuk akun warga,
+                    // sesuai alur penautan warga yang sudah ada.
+                    if (!existingWarga && profile.role === 'warga') {
+                        existingWarga = findUniqueExistingWarga(wargaStatusRows, displayName, address);
+                    }
+                    if (!existingWarga) {
+                        console.warn('Profil aktif belum memiliki baris status kanonis di jimpitan_warga_status:', profile.role, profile.user_id, memberId);
+                        continue;
+                    }
+                    const canonicalMemberId = String(existingWarga.member_id).trim();
+                    displayName = existingWarga.display_name || displayName;
+                    address = existingWarga.address || address;
+                    memberId = canonicalMemberId;
+                    if (String(profile.member_id || '').trim() !== canonicalMemberId) {
+                        await restRequest('jimpitan_admins', 'user_id=eq.' + encodeURIComponent(profile.user_id), {
+                            method: 'PATCH', headers: { 'Prefer': 'return=minimal' }, body: { member_id: canonicalMemberId }
+                        });
+                        profile.member_id = canonicalMemberId;
+                    }
+                    // Cari data lokal berdasarkan ID kanonis; jangan membuat ID pengganti.
+                    user = db.users.find(u => String(u.memberId ?? u.member_id ?? '').trim() === canonicalMemberId) ||
+                        user;
+                    const statusRow = existingWarga;
+
                     // Role hanya mengatur hak akses; semua akun tetap punya kewajiban iuran.
-                    const dailyNominalRaw = request && request.daily_nominal != null ? request.daily_nominal : (user && user.dailyNominal != null ? user.dailyNominal : 2000);
+                    const dailyNominalRaw = statusRow.daily_nominal != null
+                        ? statusRow.daily_nominal
+                        : (request && request.daily_nominal != null ? request.daily_nominal : (user && user.dailyNominal != null ? user.dailyNominal : 2000));
                     const dailyNominal = Number(dailyNominalRaw);
 
                     if (!user) {
-                        const statusRow = profile.role === 'warga'
-                            ? wargaStatusRows.find(row => String(row.member_id) === String(memberId || ''))
-                            : null;
                         user = {
                             id: nextNumericId(), username: profile.email || memberId || profile.user_id,
                             email: profile.email || '', name: displayName, role: profile.role,
                             address, dailyNominal,
-                            status: statusRow && statusRow.status ? statusRow.status : 'Kosong',
-                            lastPaidDate: statusRow && statusRow.last_paid_date ? statusRow.last_paid_date : null,
+                            status: statusRow.status || 'Kosong',
+                            lastPaidDate: statusRow.last_paid_date || null,
                             memberId: memberId || null
                         };
                         db.users.push(user);
                         changed = true;
                     }
-                    const before = JSON.stringify([user.authUid, user.email, user.username, user.name, user.role, user.memberId, user.address, user.dailyNominal]);
+                    const before = JSON.stringify([user.authUid, user.email, user.username, user.name, user.role, user.memberId, user.address, user.dailyNominal, user.status, user.lastPaidDate]);
                     user.authUid = profile.user_id;
                     user.email = profile.email || user.email || '';
                     user.username = profile.email || memberId || user.username || profile.user_id;
@@ -2922,13 +2922,16 @@
                     user.memberId = memberId;
                     user.address = address;
                     user.dailyNominal = dailyNominal;
+                    // Status Supabase menjadi sumber utama untuk seluruh role.
+                    user.status = statusRow.status || 'Kosong';
+                    user.lastPaidDate = statusRow.last_paid_date || null;
                     user.accountActive = profile.is_active === true;
-                    // Status pembayaran dipertahankan dari sumber status/rekap; jangan reset saat profil disinkronkan.
-                    if (before !== JSON.stringify([user.authUid, user.email, user.username, user.name, user.role, user.memberId, user.address, user.dailyNominal])) changed = true;
+                    if (before !== JSON.stringify([user.authUid, user.email, user.username, user.name, user.role, user.memberId, user.address, user.dailyNominal, user.status, user.lastPaidDate])) changed = true;
                 }
 
                 if (changed) {
-                    updateAllUsersPaymentStatus();
+                    // Status cloud untuk admin, petugas, dan warga sudah diterapkan di atas.
+                    // Jangan menimpanya dengan hitungan snapshot lokal yang mungkin parsial.
                     saveDB();
                 }
                 renderUserTable();
@@ -3166,10 +3169,13 @@
 
             const saldoAkhir = totalMasuk - totalKeluar;
 
-            const wargaLokal = (db.users || []).filter(u =>
-                String(u.role || 'warga').toLowerCase() === 'warga' &&
-                u.isActive !== false && u.accountActive !== false
-            ).length;
+            // Semua role adalah anggota wajib setoran; role hanya menentukan hak akses.
+            // Gunakan ID kanonis untuk mencegah anggota yang sama dihitung dua kali.
+            const wargaLokal = new Set((db.users || [])
+                .filter(u => ['admin', 'petugas', 'warga'].includes(String(u.role || 'warga').toLowerCase())
+                    && u.isActive !== false && u.accountActive !== false)
+                .map(u => String(u.memberId || u.member_id || u.authUid || u.id || '').trim())
+                .filter(Boolean)).size;
             document.getElementById('stat-total-masuk').innerText = `Rp ${totalMasuk.toLocaleString('id-ID')}`;
             document.getElementById('stat-total-keluar').innerText = `Rp ${totalKeluar.toLocaleString('id-ID')}`;
             document.getElementById('stat-saldo-akhir').innerText = `Rp ${saldoAkhir.toLocaleString('id-ID')}`;
@@ -3192,10 +3198,11 @@
                     // hitungan lokal per akun yang bisa membuat warga melihat angka 1.
                     document.getElementById('stat-total-warga').innerText = '—';
                 } else {
-                    const latestWargaCount = (db.users || []).filter(u =>
-                        String(u.role || 'warga').toLowerCase() === 'warga' &&
-                        u.isActive !== false && u.accountActive !== false
-                    ).length;
+                    const latestWargaCount = new Set((db.users || [])
+                        .filter(u => ['admin', 'petugas', 'warga'].includes(String(u.role || 'warga').toLowerCase())
+                            && u.isActive !== false && u.accountActive !== false)
+                        .map(u => String(u.memberId || u.member_id || u.authUid || u.id || '').trim())
+                        .filter(Boolean)).size;
                     document.getElementById('stat-total-warga').innerText = latestWargaCount.toLocaleString('id-ID');
                 }
             }
