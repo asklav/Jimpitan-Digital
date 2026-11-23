@@ -581,7 +581,7 @@
                             </div>
                             <div>
                                 <h2 class="text-xl font-bold text-white tracking-tight">Panel Kontrol Sistem</h2>
-                                <p class="text-xs text-slate-400 mt-0.5">Pengaturan sistem dan hak akses hanya untuk administrator.</p>
+                                <p class="text-xs text-slate-400 mt-0.5">Fitur operasional untuk Admin dan Developer. Pengaturan teknis hanya untuk Developer.</p>
                             </div>
                         </div>
                     </div>
@@ -591,7 +591,7 @@
                         <button onclick="pindahTabAdmin('tab-manage-users')" id="btn-tab-manage-users" class="admin-tab-btn px-5 py-3 font-semibold text-xs text-indigo-400 border-b-2 border-indigo-500 cursor-pointer flex items-center whitespace-nowrap transition">
                             <i class="fa-solid fa-users-gear mr-2"></i> Akses & Status Anggota
                         </button>
-                        <button onclick="pindahTabAdmin('tab-ui-settings')" id="btn-tab-ui-settings" class="admin-tab-btn px-5 py-3 font-semibold text-xs text-slate-400 hover:text-slate-200 cursor-pointer flex items-center whitespace-nowrap transition">
+                        <button onclick="pindahTabAdmin('tab-ui-settings')" id="btn-tab-ui-settings" class="admin-tab-btn developer-only hidden px-5 py-3 font-semibold text-xs text-slate-400 hover:text-slate-200 cursor-pointer flex items-center whitespace-nowrap transition">
                             <i class="fa-solid fa-palette mr-2"></i> Tampilan & Logo
                         </button>
                         <button onclick="pindahTabAdmin('tab-petugas-schedule')" id="btn-tab-petugas-schedule" class="admin-tab-btn px-5 py-3 font-semibold text-xs text-slate-400 hover:text-slate-200 cursor-pointer flex items-center whitespace-nowrap transition">
@@ -626,6 +626,9 @@
                                     <button onclick="openModalUser()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-md transition flex items-center justify-center cursor-pointer admin-only">
                                         <i class="fa-solid fa-user-plus mr-1.5"></i> Tambah Anggota
                                     </button>
+                                    <button onclick="openDeveloperAdminModal()" class="developer-only hidden px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow-md transition flex items-center justify-center cursor-pointer">
+                                        <i class="fa-solid fa-user-shield mr-1.5"></i> Buat Akun Admin
+                                    </button>
                                 </div>
                             </div>
 
@@ -655,11 +658,12 @@
                             <div class="flex items-center gap-3 border-b border-slate-800 pb-4">
                                 <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center"><i class="fa-solid fa-calendar-check text-xl"></i></div>
                                 <div><h3 class="text-lg font-bold text-white">Penjadwalan Petugas Pengambilan Jimpitan</h3>
-                                <p class="text-xs text-slate-400">Atur tanggal, jam, wilayah, dan petugas yang bertugas mengambil jimpitan.</p></div>
+                                <p class="text-xs text-slate-400">Atur jadwal sekali atau berulang. Jadwal berulang dibuat bertahap hingga 60 hari ke depan dengan rotasi Petugas aktif.</p></div>
                             </div>
                             <form id="petugas-schedule-form" onsubmit="savePetugasSchedule(event)" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div><label class="block text-xs text-slate-400 mb-1">Tanggal Pengambilan</label><input id="schedule-date" type="date" required class="w-full rounded-xl bg-slate-950 border border-slate-700 p-3 text-sm text-white"></div>
-                                <div><label class="block text-xs text-slate-400 mb-1">Petugas</label><select id="schedule-officer" required class="w-full rounded-xl bg-slate-950 border border-slate-700 p-3 text-sm text-white"><option value="">Pilih petugas</option></select></div>
+                                <div><label class="block text-xs text-slate-400 mb-1">Pola Jadwal</label><select id="schedule-recurrence" class="w-full rounded-xl bg-slate-950 border border-slate-700 p-3 text-sm text-white"><option value="none">Tidak berulang (sekali)</option><option value="daily">Harian</option><option value="weekly">Mingguan (7 hari)</option><option value="biweekly">Dua mingguan (14 hari)</option><option value="monthly">Bulanan (tanggal yang sama)</option></select></div>
+                                <div><label class="block text-xs text-slate-400 mb-1">Petugas / Awal Rotasi</label><select id="schedule-officer" required class="w-full rounded-xl bg-slate-950 border border-slate-700 p-3 text-sm text-white"><option value="">Pilih petugas pertama</option></select><p class="text-[10px] text-slate-500 mt-1">Untuk jadwal berulang, petugas aktif akan bergiliran otomatis.</p></div>
                                 <div><label class="block text-xs text-slate-400 mb-1">Jam Mulai</label><input id="schedule-start" type="time" required value="18:00" class="w-full rounded-xl bg-slate-950 border border-slate-700 p-3 text-sm text-white"></div>
                                 <div><label class="block text-xs text-slate-400 mb-1">Jam Selesai</label><input id="schedule-end" type="time" required value="20:00" class="w-full rounded-xl bg-slate-950 border border-slate-700 p-3 text-sm text-white"></div>
                                 <div class="sm:col-span-2"><label class="block text-xs text-slate-400 mb-1">Wilayah / Rute Pengambilan</label><input id="schedule-area" type="text" required maxlength="180" placeholder="Contoh: RT 03 / Blok A dan B" class="w-full rounded-xl bg-slate-950 border border-slate-700 p-3 text-sm text-white"></div>
@@ -928,11 +932,10 @@
                     <input type="number" id="modal-daily-nominal" required class="w-full p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 outline-none" placeholder="Cth: 2000">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-400 mb-1">Hak Akses (hanya admin dapat mengatur)</label>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Hak Akses (Admin; Developer ditetapkan melalui prosedur aman)</label>
                     <select id="modal-role" class="w-full p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 outline-none">
                         <option value="warga">Warga</option>
                         <option value="petugas">Petugas</option>
-                        <option value="admin">Admin</option>
                     </select>
                 </div>
                 <div>
@@ -946,6 +949,23 @@
                     <button type="button" onclick="closeModalUser()" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl text-xs transition cursor-pointer">Batal</button>
                     <button type="submit" class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl text-xs transition cursor-pointer">Simpan</button>
                 </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL PEMBUATAN AKUN ADMIN KHUSUS DEVELOPER -->
+    <div id="modal-developer-admin" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm hidden items-center justify-center p-4 z-[60] overflow-y-auto">
+        <div class="bg-slate-900 rounded-2xl w-full max-w-md p-6 border border-indigo-500/30 shadow-2xl my-auto">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-11 h-11 rounded-xl bg-indigo-500/15 text-indigo-300 flex items-center justify-center"><i class="fa-solid fa-user-shield text-lg"></i></div>
+                <div><h3 class="text-lg font-bold text-white">Buat Akun Admin Operasional</h3><p class="text-xs text-slate-400">Khusus Developer</p></div>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed mb-4">Akun dibuat di Supabase Auth dan langsung diberi role Admin. Admin otomatis mendapat ID anggota dan kewajiban iuran. Gunakan kata sandi awal yang aman dan sampaikan kepada pemilik akun secara pribadi.</p>
+            <form id="form-developer-admin" onsubmit="createAdminAccountFromDeveloper(event)" class="space-y-4">
+                <div><label class="block text-xs font-semibold text-slate-400 mb-1">Nama Admin</label><input id="developer-admin-name" type="text" required maxlength="100" autocomplete="name" class="w-full p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 outline-none" placeholder="Nama lengkap Admin"></div>
+                <div><label class="block text-xs font-semibold text-slate-400 mb-1">Email Login</label><input id="developer-admin-email" type="email" required maxlength="254" autocomplete="email" class="w-full p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 outline-none" placeholder="admin@contoh.com"></div>
+                <div><label class="block text-xs font-semibold text-slate-400 mb-1">Kata Sandi Awal (minimal 8 karakter)</label><input id="developer-admin-password" type="password" required minlength="8" autocomplete="new-password" class="w-full p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 outline-none" placeholder="Buat kata sandi awal"></div>
+                <div class="flex gap-3 pt-2"><button type="button" onclick="closeDeveloperAdminModal()" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl text-xs">Batal</button><button id="developer-admin-submit" type="submit" class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl text-xs">Buat Akun Admin</button></div>
             </form>
         </div>
     </div>
@@ -992,6 +1012,15 @@
     <!-- JAVASCRIPT UTAMA TERINTEGRASI -->
     <script>
         // Global State & User Current
+        // Developer mewarisi seluruh kemampuan operasional Admin, tetapi Admin tidak memperoleh akses teknis.
+        function isDeveloper() { return !!currentUser && String(currentUser.role || '').toLowerCase() === 'developer'; }
+        function isAdminOrDeveloper() { return !!currentUser && ['admin', 'developer'].includes(String(currentUser.role || '').toLowerCase()); }
+        function requireDeveloper(message = 'Pengaturan teknis hanya dapat diakses akun Developer.') {
+            if (isDeveloper()) return true;
+            showModal(message, 'Akses Ditolak');
+            return false;
+        }
+
         function safeParseLocalStorage(key, fallback) {
             try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }
             catch (err) { console.warn('Data lokal tidak dapat dibaca:', key, err); return fallback; }
@@ -1259,11 +1288,15 @@
             const todayStr = getTodayDateString();
             currentSystemDate = todayStr;
 
-            // Status iuran dihitung sama untuk semua role, termasuk admin dan petugas.
+            // Status iuran dihitung sama untuk semua role. Cocokkan ID lokal maupun ID anggota kanonis.
             db.users.forEach(u => {
+                const memberKeys = new Set([u.id, u.memberId, u.member_id, u.member_id_akun, u.member_id_status]
+                    .filter(v => v !== null && v !== undefined && String(v).trim() !== '')
+                    .map(v => String(v)));
                 const paidToday = db.jimpitan.some(item =>
                     item.type === 'Masuk' &&
-                    String(item.userId) === String(u.id) &&
+                    [item.userId, item.user_id, item.memberId, item.member_id]
+                        .some(v => v !== null && v !== undefined && memberKeys.has(String(v))) &&
                     getRecordDateString(item) === todayStr
                 );
                 if (paidToday || u.lastPaidDate === todayStr) {
@@ -1334,7 +1367,7 @@
                 return false;
             }
             autoBackupToStorage();
-            if (!applyingCloudData && supabaseAuthSession && currentUser && currentUser.role === 'admin') {
+            if (!applyingCloudData && supabaseAuthSession && isAdminOrDeveloper()) {
                 localDirty = true;
                 localChangeVersion++;
                 try { localStorage.setItem('jimpitan_cloud_dirty', '1'); } catch (err) { console.warn('Penanda sinkronisasi tidak tersimpan:', err); }
@@ -1368,12 +1401,12 @@
         function scheduleCloudSync() {
             // Snapshot lengkap berisi data sensitif dan hanya boleh disinkronkan administrator.
             // Gabungkan beberapa perubahan UI yang berdekatan agar tidak saling menyalip.
-            if (!supabaseConfig || !supabaseAuthSession || !currentUser || currentUser.role !== 'admin') return;
+            if (!supabaseConfig || !supabaseAuthSession || !currentUser || !isAdminOrDeveloper()) return;
             if (cloudSyncBusy) { cloudSyncPending = true; return; }
             if (cloudSyncDebounceTimer) clearTimeout(cloudSyncDebounceTimer);
             cloudSyncDebounceTimer = setTimeout(() => {
                 cloudSyncDebounceTimer = null;
-                if (localDirty && currentUser?.role === 'admin') syncAllToCloud();
+                if (localDirty && isAdminOrDeveloper()) syncAllToCloud();
             }, 450);
         }
 
@@ -1513,7 +1546,7 @@
         async function syncPublicUiSettings(options = {}) {
             if (!supabaseConfig || !validSupabaseUrl(supabaseConfig.url)) return false;
             try {
-                if (currentUser && currentUser.role === 'admin' && localStorage.getItem('jimpitan_ui_settings_dirty') === '1' && !options.force) return false;
+                if (isAdminOrDeveloper() && localStorage.getItem('jimpitan_ui_settings_dirty') === '1' && !options.force) return false;
                 const rows = await publicRestRequest('jimpitan_public_settings', 'id=eq.main&select=settings,updated_at');
                 const row = Array.isArray(rows) && rows.length ? rows[0] : null;
                 if (!row || !row.settings || typeof row.settings !== 'object') return false;
@@ -1531,6 +1564,7 @@
         }
 
         async function savePublicUiSettings(settings) {
+            if (!requireDeveloper('Hanya Developer yang boleh mengubah tampilan, logo, dan splash screen.')) return false;
             const payload = { id: 'main', settings, updated_at: new Date().toISOString() };
             const result = await restRequest('jimpitan_public_settings', 'on_conflict=id', {
                 method: 'POST',
@@ -1553,7 +1587,7 @@
                 'user_id=eq.' + encodeURIComponent(authUser.id) + '&select=user_id,display_name,role,is_active,member_id,email'
             );
             const profile = Array.isArray(rows) && rows.length ? rows[0] : null;
-            if (!profile || profile.is_active !== true || !['admin', 'petugas', 'warga'].includes(profile.role)) {
+            if (!profile || profile.is_active !== true || !['developer', 'admin', 'petugas', 'warga'].includes(profile.role)) {
                 throw new Error('Akun belum terdaftar aktif pada tabel jimpitan_admins. Hubungi administrator.');
             }
             return profile;
@@ -1602,7 +1636,7 @@
         }
 
         async function runCloudSync(roleLabel) {
-            if (!supabaseConfig || !supabaseAuthSession || !currentUser || !['admin','petugas'].includes(currentUser.role)) {
+            if (!supabaseConfig || !supabaseAuthSession || !currentUser || !['admin','developer'].includes(currentUser.role)) {
                 lastCloudSyncError = new Error('Sinkronisasi tidak dapat dijalankan: konfigurasi Supabase atau sesi admin tidak tersedia.');
                 return false;
             }
@@ -1768,7 +1802,7 @@
         }
 
         async function resolveCloudSyncConflict() {
-            if (!currentUser || currentUser.role !== 'admin' || !supabaseConfig || !supabaseAuthSession) {
+            if (!currentUser || !isAdminOrDeveloper() || !supabaseConfig || !supabaseAuthSession) {
                 showModal('Pemulihan konflik hanya dapat dilakukan oleh administrator yang sudah terhubung ke Supabase.', 'Akses Ditolak');
                 return false;
             }
@@ -1853,10 +1887,14 @@
         function petugasTransactionToLocal(tx) {
             const id = String(tx.client_id || tx.id || Date.now());
             const dt = tx.date_time || tx.created_at || makeRecordTimestamp();
+            const memberId = String(tx.member_id || '');
+            const linkedMember = (db.users || []).find(u =>
+                String(u.memberId || u.member_id || u.member_id_akun || u.member_id_status || u.id || '') === memberId
+            );
             return {
                 id: /^\d+$/.test(id) ? Number(id) : id,
-                userId: String(tx.member_id || ''),
-                memberId: String(tx.member_id || ''),
+                userId: String(linkedMember?.id ?? memberId),
+                memberId,
                 name: 'Setoran Jimpitan ' + (tx.display_name || 'Warga') + (tx.address ? ' (' + tx.address + ')' : ''),
                 address: tx.address || '', amount: Number(tx.amount || 0), type: 'Masuk',
                 dateTime: dt, paymentDate: String(dt).slice(0,10), paymentMode: /\(Rapel \d+ hari\)/i.test(String(tx.display_name || '')) ? 'rapel' : 'harian', paymentDays: Number((String(tx.display_name || '').match(/\(Rapel (\d+) hari\)/i) || [])[1] || 1), processedBy: tx.processed_by || 'Petugas', editedBy: null
@@ -2181,7 +2219,7 @@
         // Muat status anggota langsung dari tabel Supabase yang menjadi sumber kebenaran.
         // Data ini hanya dipakai untuk tampilan; tidak menimpa snapshot jimpitan_app_state.
         async function refreshWargaStatusFromSupabase() {
-            if (!supabaseConfig || !supabaseAuthSession || !currentUser || currentUser.role !== 'admin') return;
+            if (!supabaseConfig || !supabaseAuthSession || !currentUser || !isAdminOrDeveloper()) return;
             const rows = await restRequest(
                 'jimpitan_warga_status',
                 'select=member_id,display_name,address,daily_nominal,status,last_paid_date&order=display_name.asc'
@@ -2227,7 +2265,7 @@
         // Baca transaksi petugas dari tabel sumber untuk dashboard administrator.
         // client_id menjadi kunci idempoten agar polling tidak menggandakan setoran.
         async function refreshAdminPetugasTransactions() {
-            if (!supabaseConfig || !supabaseAuthSession || !currentUser || currentUser.role !== 'admin') return;
+            if (!supabaseConfig || !supabaseAuthSession || !currentUser || !isAdminOrDeveloper()) return;
             const rows = await restRequest(
                 'jimpitan_petugas_transactions',
                 'select=client_id,user_id,member_id,display_name,address,amount,date_time,processed_by,created_at&order=created_at.desc'
@@ -2287,7 +2325,7 @@
                 await refreshSharedDashboardSummary();
                 return;
             }
-            if (!currentUser || currentUser.role !== 'admin') return;
+            if (!currentUser || !isAdminOrDeveloper()) return;
             if (!supabaseConfig || !supabaseAuthSession || cloudSyncBusy) {
                 await refreshSharedDashboardSummary();
                 return;
@@ -2351,7 +2389,7 @@
         });
 
         window.addEventListener('online', () => {
-            if (localDirty && supabaseAuthSession && currentUser?.role === 'admin') scheduleCloudSync();
+            if (localDirty && supabaseAuthSession && isAdminOrDeveloper()) scheduleCloudSync();
             if (supabaseAuthSession && currentUser?.role === 'petugas') flushPetugasPending();
             if (supabaseAuthSession && currentUser && ['admin', 'petugas', 'warga'].includes(currentUser.role)) pollCloudData();
         });
@@ -2441,13 +2479,13 @@
                 storeAuthSession(sessionData);
                 const profile = await fetchAdminProfile(sessionData.user);
                 // Peran ditentukan oleh profil yang sudah diverifikasi server, bukan pilihan di layar login.
-                if (!['admin', 'petugas', 'warga'].includes(profile.role)) {
+                if (!['developer', 'admin', 'petugas', 'warga'].includes(profile.role)) {
                     storeAuthSession(null);
                     throw new Error('Peran akun tidak dikenali. Hubungi administrator.');
                 }
                 loginRoleSelection = profile.role;
                 setCurrentStaff(sessionData.user, profile);
-                if (profile.role === 'admin') {
+                if (['admin', 'developer'].includes(profile.role)) {
                     // Jangan menimpa database server dengan data lokal kosong dari HP baru.
                     const cloudRow = await fetchCloudState();
                     if (cloudRow && cloudRow.payload) {
@@ -2751,7 +2789,7 @@
         // Sinkronkan semua profil aktif Supabase ke tabel Akses & Status Anggota.
         // jimpitan_warga_status adalah sumber ID warga; fungsi ini hanya menautkan akun.
         async function syncRegisteredProfilesToMembers() {
-            if (!supabaseConfig || !supabaseAuthSession || !currentUser || currentUser.role !== 'admin') return;
+            if (!supabaseConfig || !supabaseAuthSession || !currentUser || !isAdminOrDeveloper()) return;
             try {
                 const profiles = await restRequest(
                     'jimpitan_admins',
@@ -2854,7 +2892,7 @@
 
                 for (const profile of profiles) {
                     // Profil nonaktif tidak boleh dibuat kembali menjadi anggota lokal.
-                    if (!profile || !profile.user_id || profile.is_active !== true || !['admin', 'petugas', 'warga'].includes(profile.role)) continue;
+                    if (!profile || !profile.user_id || profile.is_active !== true || !['developer', 'admin', 'petugas', 'warga'].includes(profile.role)) continue;
                     const request = requests.find(r => r.auth_user_id === profile.user_id) ||
                         requests.find(r => profile.email && r.email && r.email.toLowerCase() === String(profile.email).toLowerCase());
                     const profileEmail = String(profile.email || '').trim().toLowerCase();
@@ -2944,7 +2982,7 @@
         async function loadRegistrationRequests() {
             const panel = document.getElementById('registration-approval-panel');
             const list = document.getElementById('registration-approval-list');
-            if (!panel || !list || !currentUser || currentUser.role !== 'admin') return;
+            if (!panel || !list || !currentUser || !isAdminOrDeveloper()) return;
             panel.classList.remove('hidden');
             list.textContent = 'Memuat permohonan…';
             try {
@@ -3010,7 +3048,7 @@
         }
 
         async function approveRegistration(req, selectedMemberId = '') {
-            if (!currentUser || currentUser.role !== 'admin') { showModal('Hanya admin yang boleh menyetujui pendaftaran.', 'Akses Ditolak'); return; }
+            if (!currentUser || !isAdminOrDeveloper()) { showModal('Hanya admin yang boleh menyetujui pendaftaran.', 'Akses Ditolak'); return; }
             const approvedRole = req.role === 'petugas' ? 'petugas' : 'warga';
             if (approvedRole === 'warga' && !String(selectedMemberId || '').trim()) {
                 selectedMemberId = '__new__';
@@ -3105,8 +3143,15 @@
 
             badgeRole.innerText = currentUser.role.toUpperCase();
             userGreeting.innerText = `Halo, ${currentUser.name}`;
+            document.querySelectorAll('.developer-only').forEach(el => el.classList.toggle('hidden', !isDeveloper()));
+            const cloudBadge = document.getElementById('cloudStatusBadge');
+            if (cloudBadge) {
+                cloudBadge.disabled = !isDeveloper();
+                cloudBadge.style.pointerEvents = isDeveloper() ? '' : 'none';
+                cloudBadge.setAttribute('aria-label', isDeveloper() ? 'Status koneksi cloud dan pengaturan database' : 'Status koneksi cloud');
+            }
 
-            const isAdmin = currentUser.role === 'admin';
+            const isAdmin = isAdminOrDeveloper();
             const isPetugas = currentUser.role === 'petugas';
             const isAdminOrPetugas = isAdmin || isPetugas;
             const myScheduleCard = document.getElementById('petugas-my-schedule-card');
@@ -3191,7 +3236,7 @@
                 if (summary.total_saldo != null) document.getElementById('stat-saldo-akhir').innerText = money(summary.total_saldo);
                 // Jangan biarkan angka ringkasan cloud yang sudah kedaluwarsa menimpa
                 // jumlah warga lokal setelah admin menambah/mengubah anggota dan sinkronisasi belum selesai.
-                if (summary.jumlah_warga != null && !(currentUser.role === 'admin' && localDirty)) {
+                if (summary.jumlah_warga != null && !(isAdminOrDeveloper() && localDirty)) {
                     document.getElementById('stat-total-warga').innerText = Number(summary.jumlah_warga).toLocaleString('id-ID');
                 } else if (summary.jumlah_warga == null) {
                     // Online tetapi total global belum berhasil diverifikasi: jangan tampilkan
@@ -3218,7 +3263,7 @@
                 return;
             }
 
-            const isAdminOrPetugas = currentUser && currentUser.role === 'admin';
+            const isAdminOrPetugas = isAdminOrDeveloper();
 
             sortedJimpitan.forEach(item => {
                 const tr = document.createElement('tr');
@@ -3236,7 +3281,7 @@
                     actionTd = `
                         <td class="p-3.5 text-center space-x-2">
                             <button onclick="editTransaction(${Number(item.id)})" class="text-indigo-400 hover:text-indigo-300 p-1 cursor-pointer" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
-                            ${currentUser.role === 'admin' ? `<button onclick="deleteTransaction(${Number(item.id)})" class="text-rose-400 hover:text-rose-300 p-1 cursor-pointer" title="Hapus"><i class="fa-solid fa-trash-can"></i></button>` : ''}
+                            ${isAdminOrDeveloper() ? `<button onclick="deleteTransaction(${Number(item.id)})" class="text-rose-400 hover:text-rose-300 p-1 cursor-pointer" title="Hapus"><i class="fa-solid fa-trash-can"></i></button>` : ''}
                         </td>
                     `;
                 } else {
@@ -3391,7 +3436,12 @@
             }
 
             const todayStr = getTodayDateString();
-            const alreadyPaidToday = db.jimpitan.some(item => item.type === 'Masuk' && String(item.userId ?? item.memberId ?? item.user_id ?? '') === String(user.id) && getRecordDateString(item) === todayStr);
+            const userMemberKeys = new Set([user.id, user.memberId, user.member_id, user.member_id_akun, user.member_id_status]
+                .filter(v => v !== null && v !== undefined && String(v).trim() !== '').map(v => String(v)));
+            const alreadyPaidToday = db.jimpitan.some(item => item.type === 'Masuk' &&
+                [item.userId, item.user_id, item.memberId, item.member_id]
+                    .some(v => v !== null && v !== undefined && userMemberKeys.has(String(v))) &&
+                getRecordDateString(item) === todayStr);
             if (alreadyPaidToday && !isRapel) {
                 showModal('Setoran harian anggota ini sudah tercatat hari ini. Untuk tunggakan hari sebelumnya, aktifkan Pembayaran rapel.', 'Setoran Duplikat');
                 return;
@@ -3541,7 +3591,7 @@
 
         // --- MANAJEMEN TRANSAKSI (MODAL EDIT/ADD) ---
         function openModalTransaction(transId = null) {
-            if (!currentUser || currentUser.role !== 'admin') { showModal('Fitur transaksi kas hanya dapat digunakan administrator.', 'Akses Ditolak'); return; }
+            if (!currentUser || !isAdminOrDeveloper()) { showModal('Fitur transaksi kas hanya dapat digunakan administrator.', 'Akses Ditolak'); return; }
             document.getElementById('modal-trans-id').value = transId || '';
             document.getElementById('modal-trans-title').innerText = transId ? 'Edit Transaksi Kas' : 'Tambah Transaksi Kas';
             
@@ -3591,7 +3641,7 @@
 
         function saveTransactionModal(e) {
             e.preventDefault();
-            if (!currentUser || currentUser.role !== 'admin') { showModal('Petugas hanya dapat mencatat setoran jimpitan. Pengelolaan transaksi kas hanya untuk administrator.', 'Akses Ditolak'); return; }
+            if (!currentUser || !isAdminOrDeveloper()) { showModal('Petugas hanya dapat mencatat setoran jimpitan. Pengelolaan transaksi kas hanya untuk administrator.', 'Akses Ditolak'); return; }
             const id = document.getElementById('modal-trans-id').value;
             const type = document.getElementById('modal-trans-type').value;
             const dateVal = document.getElementById('modal-trans-date').value;
@@ -3707,7 +3757,7 @@
         function populateScheduleOfficerSelect() {
             const select = document.getElementById('schedule-officer');
             if (!select) return;
-            const officers = (db.users || []).filter(u => String(u.role || '').toLowerCase() === 'petugas' && (u.authUid || u.auth_uid));
+            const officers = (db.users || []).filter(u => String(u.role || '').toLowerCase() === 'petugas' && u.accountActive !== false && u.isActive !== false && (u.authUid || u.auth_uid));
             select.innerHTML = '<option value="">Pilih petugas</option>';
             officers.forEach(u => {
                 const uid = String(u.authUid || u.auth_uid);
@@ -3734,7 +3784,7 @@
                 const badgeClass = status === 'Selesai' ? 'text-emerald-300 bg-emerald-500/10' : status === 'Dibatalkan' ? 'text-rose-300 bg-rose-500/10' : 'text-amber-300 bg-amber-500/10';
                 return `<tr>
                     <td class="p-3 whitespace-nowrap">${escapeHtml(scheduleFormatDate(row.schedule_date))}<br><span class="text-slate-500">${escapeHtml(row.start_time || '')}–${escapeHtml(row.end_time || '')}</span></td>
-                    <td class="p-3">${escapeHtml(row.assigned_name || 'Petugas')}</td>
+                    <td class="p-3">${escapeHtml(row.assigned_name || 'Petugas')}${row.recurrence_type ? `<div class="text-[10px] text-cyan-300 mt-1">Rotasi · ${escapeHtml(({daily:'Harian',weekly:'Mingguan',biweekly:'Dua mingguan',monthly:'Bulanan'})[row.recurrence_type] || row.recurrence_type)}</div>` : ''}</td>
                     <td class="p-3">${escapeHtml(row.area || '-')}${row.notes ? `<div class="text-slate-500 mt-1">${escapeHtml(row.notes)}</div>` : ''}</td>
                     <td class="p-3"><span class="rounded-full px-2 py-1 ${badgeClass}">${escapeHtml(status)}</span></td>
                     <td class="p-3"><div class="flex flex-wrap gap-1">
@@ -3747,22 +3797,25 @@
         }
 
         async function loadAdminPetugasSchedules() {
-            if (!currentUser || currentUser.role !== 'admin' || !supabaseAuthSession) return;
+            if (!currentUser || !isAdminOrDeveloper() || !supabaseAuthSession) return;
             const tbody = document.getElementById('admin-petugas-schedule-list');
             if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-400">Memuat jadwal dari server…</td></tr>';
             try {
-                const rows = await restRequest('jimpitan_petugas_schedule', 'select=id,assigned_user_id,assigned_name,schedule_date,start_time,end_time,area,notes,status,created_at&order=schedule_date.asc,start_time.asc');
+                // Perpanjang jadwal berulang secara idempoten sampai 60 hari ke depan.
+                await restRequest('rpc/jimpitan_generate_petugas_schedule_window', '', { method: 'POST', body: {} });
+                const rows = await restRequest('jimpitan_petugas_schedule',
+                    'select=id,assigned_user_id,assigned_name,schedule_date,start_time,end_time,area,notes,status,created_at,recurrence_rule_id,recurrence_type&order=schedule_date.asc,start_time.asc');
                 petugasScheduleCache = Array.isArray(rows) ? rows : [];
                 renderAdminPetugasSchedules(petugasScheduleCache);
                 populateScheduleOfficerSelect();
             } catch (err) {
-                if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-rose-300">${escapeHtml(err.message)}<br><span class="text-slate-500">Periksa tabel dan RLS jadwal pada SQL yang disertakan.</span></td></tr>`;
+                if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-rose-300">${escapeHtml(err.message)}<br><span class="text-slate-500">Jalankan SQL migrasi jadwal dan anggota terlebih dahulu, lalu muat ulang.</span></td></tr>`;
             }
         }
 
         async function savePetugasSchedule(event) {
             if (event) event.preventDefault();
-            if (!currentUser || currentUser.role !== 'admin') { showModal('Hanya administrator yang dapat membuat jadwal.', 'Akses Ditolak'); return; }
+            if (!currentUser || !isAdminOrDeveloper()) { showModal('Hanya Admin atau Developer yang dapat membuat jadwal.', 'Akses Ditolak'); return; }
             const select = document.getElementById('schedule-officer');
             const assignedId = select?.value || '';
             const selected = select?.selectedOptions?.[0];
@@ -3771,33 +3824,59 @@
             const end = document.getElementById('schedule-end')?.value || '';
             const area = document.getElementById('schedule-area')?.value.trim() || '';
             const notes = document.getElementById('schedule-notes')?.value.trim() || '';
+            const recurrence = document.getElementById('schedule-recurrence')?.value || 'none';
             if (!assignedId || !date || !start || !end || end <= start || !area) {
                 showModal('Lengkapi petugas, tanggal, jam, dan wilayah. Jam selesai harus setelah jam mulai.', 'Jadwal Belum Lengkap'); return;
             }
-            const conflict = petugasScheduleCache.some(x => String(x.assigned_user_id) === assignedId && x.schedule_date === date && x.status !== 'Dibatalkan' && start < String(x.end_time || '') && end > String(x.start_time || ''));
-            if (conflict) { showModal('Petugas tersebut sudah memiliki jadwal yang bertumpang tindih pada tanggal dan jam itu.', 'Jadwal Bentrok'); return; }
-            const payload = {
-                assigned_user_id: assignedId,
-                assigned_name: selected?.dataset?.name || selected?.textContent || 'Petugas',
-                schedule_date: date, start_time: start, end_time: end,
-                area, notes, status: 'Terjadwal',
-                created_by: supabaseAuthSession?.user?.id || null
-            };
+            if (!['none','daily','weekly','biweekly','monthly'].includes(recurrence)) {
+                showModal('Pola jadwal tidak dikenal.', 'Data Tidak Valid'); return;
+            }
             try {
-                await restRequest('jimpitan_petugas_schedule', '', {method:'POST', headers:{'Prefer':'return=minimal'}, body:payload});
+                if (recurrence !== 'none') {
+                    await restRequest('rpc/jimpitan_create_petugas_schedule_rule', '', {
+                        method: 'POST',
+                        body: {
+                            p_start_date: date,
+                            p_start_time: start,
+                            p_end_time: end,
+                            p_area: area,
+                            p_notes: notes,
+                            p_frequency: recurrence,
+                            p_first_petugas: assignedId
+                        }
+                    });
+                    await loadAdminPetugasSchedules();
+                    showModal('Jadwal berulang berhasil dibuat. Sistem membuat jadwal 60 hari ke depan dan akan memperpanjangnya otomatis saat jadwal dimuat. Rotasi memakai Petugas aktif.', 'Jadwal Berulang Aktif');
+                    logActivity('Membuat jadwal berulang ' + recurrence + ' mulai ' + date + ' dengan rotasi Petugas.');
+                } else {
+                    const conflict = petugasScheduleCache.some(x => String(x.assigned_user_id) === assignedId && x.schedule_date === date && x.status !== 'Dibatalkan' && start < String(x.end_time || '') && end > String(x.start_time || ''));
+                    if (conflict) { showModal('Petugas tersebut sudah memiliki jadwal yang bertumpang tindih pada tanggal dan jam itu.', 'Jadwal Bentrok'); return; }
+                    const payload = {
+                        assigned_user_id: assignedId,
+                        assigned_name: selected?.dataset?.name || selected?.textContent || 'Petugas',
+                        schedule_date: date, start_time: start, end_time: end,
+                        area, notes, status: 'Terjadwal',
+                        created_by: supabaseAuthSession?.user?.id || null
+                    };
+                    await restRequest('jimpitan_petugas_schedule', '', {method:'POST', headers:{'Prefer':'return=minimal'}, body:payload});
+                    await loadAdminPetugasSchedules();
+                    showModal('Jadwal pengambilan jimpitan berhasil disimpan dan dapat dilihat oleh petugas yang ditugaskan.', 'Jadwal Tersimpan');
+                    logActivity('Membuat jadwal pengambilan jimpitan untuk ' + payload.assigned_name + ' pada ' + date);
+                }
                 document.getElementById('petugas-schedule-form')?.reset();
                 const dateInput = document.getElementById('schedule-date');
                 if (dateInput) dateInput.value = new Date().toLocaleDateString('en-CA');
                 if (document.getElementById('schedule-start')) document.getElementById('schedule-start').value = '18:00';
                 if (document.getElementById('schedule-end')) document.getElementById('schedule-end').value = '20:00';
-                await loadAdminPetugasSchedules();
-                showModal('Jadwal pengambilan jimpitan berhasil disimpan dan dapat dilihat oleh petugas yang ditugaskan.', 'Jadwal Tersimpan');
-                logActivity('Membuat jadwal pengambilan jimpitan untuk ' + payload.assigned_name + ' pada ' + date);
-            } catch (err) { showModal('Jadwal belum tersimpan ke server: ' + err.message, 'Gagal Menyimpan Jadwal'); }
+                if (document.getElementById('schedule-recurrence')) document.getElementById('schedule-recurrence').value = 'none';
+                populateScheduleOfficerSelect();
+            } catch (err) {
+                showModal('Jadwal belum tersimpan ke server: ' + err.message + '. Pastikan SQL migrasi tambahan sudah dijalankan pada proyek Supabase yang sama.', 'Gagal Menyimpan Jadwal');
+            }
         }
 
         async function setPetugasScheduleStatus(id, status) {
-            if (!currentUser || currentUser.role !== 'admin' || !id) return;
+            if (!currentUser || !isAdminOrDeveloper() || !id) return;
             try {
                 await restRequest('jimpitan_petugas_schedule', 'id=eq.' + encodeURIComponent(id), {method:'PATCH', headers:{'Prefer':'return=minimal'}, body:{status}});
                 await loadAdminPetugasSchedules();
@@ -3805,7 +3884,7 @@
         }
 
         async function deletePetugasSchedule(id) {
-            if (!currentUser || currentUser.role !== 'admin' || !id || !confirm('Hapus jadwal ini?')) return;
+            if (!currentUser || !isAdminOrDeveloper() || !id || !confirm('Hapus jadwal ini?')) return;
             try {
                 await restRequest('jimpitan_petugas_schedule', 'id=eq.' + encodeURIComponent(id), {method:'DELETE', headers:{'Prefer':'return=minimal'}});
                 await loadAdminPetugasSchedules();
@@ -3908,7 +3987,7 @@
 
         // --- PANEL KONTROL ADMIN & PETUGAS ---
         function bukaPanelAdmin() {
-            if (!currentUser || currentUser.role !== 'admin') { showModal('Panel administrator hanya dapat diakses akun admin.', 'Akses Ditolak'); return; }
+            if (!isAdminOrDeveloper()) { showModal('Panel operasional hanya dapat diakses akun Admin atau Developer.', 'Akses Ditolak'); return; }
             document.getElementById('tab-dashboard').classList.add('hidden');
             document.getElementById('page-scan-jimpitan').classList.add('hidden');
             document.getElementById('panel-admin').classList.remove('hidden');
@@ -3919,11 +3998,12 @@
             const scheduleDateInput = document.getElementById('schedule-date');
             if (scheduleDateInput && !scheduleDateInput.value) scheduleDateInput.value = new Date().toLocaleDateString('en-CA');
             renderUserTable();
-            if (currentUser && currentUser.role === 'admin') syncRegisteredProfilesToMembers();
+            if (isAdminOrDeveloper()) syncRegisteredProfilesToMembers();
             renderActivityLogTable();
         }
 
         function pindahTabAdmin(tabId) {
+            if (tabId === 'tab-ui-settings' && !requireDeveloper('Menu Tampilan & Logo hanya tersedia untuk Developer.')) return;
             document.querySelectorAll('.admin-tab-content').forEach(el => el.classList.add('hidden'));
             document.querySelectorAll('.admin-tab-btn').forEach(btn => {
                 btn.classList.remove('text-indigo-400', 'border-b-2', 'border-indigo-500');
@@ -3948,7 +4028,7 @@
             const tbody = document.getElementById('table-users-body');
             tbody.innerHTML = '';
 
-            const isAdmin = currentUser && currentUser.role === 'admin';
+            const isAdmin = isAdminOrDeveloper();
 
             db.users.forEach(u => {
                 const tr = document.createElement('tr');
@@ -3962,7 +4042,9 @@
                 const roleBadge = `<div class="flex flex-col items-start gap-1"><span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-300 border border-slate-700">${escapeHtml(String(u.role || 'warga').toUpperCase())}</span>${u.authUid ? `<span class="px-2 py-0.5 rounded text-[9px] font-semibold ${u.accountActive === false ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'}">${u.accountActive === false ? 'AKUN NONAKTIF' : 'AKUN AKTIF'}</span>` : ''}</div>`;
 
                 let actionTd = '';
-                if (isAdmin) {
+                const rowRole = String(u.role || '').toLowerCase();
+                const canManageRow = isAdmin && rowRole !== 'developer' && !(currentUser?.role === 'admin' && rowRole === 'admin');
+                if (canManageRow) {
                     actionTd = `
                         <td class="p-4 text-center space-x-2">
                             <button onclick="toggleUserStatus(${Number(u.id)})" class="px-2.5 py-1 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 cursor-pointer" title="Toggle Status">Reset/Setor</button>
@@ -3971,7 +4053,7 @@
                         </td>
                     `;
                 } else {
-                    actionTd = `<td class="p-4 text-center text-slate-600 admin-only">-</td>`;
+                    actionTd = `<td class="p-4 text-center text-slate-600 admin-only">${String(u.role || '').toLowerCase() === 'developer' ? 'Akun Developer dilindungi' : '-'}</td>`;
                 }
 
                 tr.innerHTML = `
@@ -3994,7 +4076,9 @@
         }
 
         function toggleUserStatus(userId) {
+            if (!isAdminOrDeveloper()) { showModal('Hanya Admin atau Developer yang dapat mengubah status anggota.', 'Akses Ditolak'); return; }
             const user = db.users.find(u => String(u.id) === String(userId));
+            if (user && String(user.role || '').toLowerCase() === 'developer') { showModal('Akun Developer dilindungi dan tidak dapat diubah dari menu anggota.', 'Aksi Ditolak'); return; }
             if (user) {
                 if (user.status === 'Terisi') {
                     user.status = 'Kosong';
@@ -4025,6 +4109,12 @@
         }
 
         function openModalUser(userId = null) {
+            if (!isAdminOrDeveloper()) { showModal('Menu ini hanya dapat diakses Admin atau Developer.', 'Akses Ditolak'); return; }
+            if (userId) {
+                const protectedUser = db.users.find(x => Number(x.id) === Number(userId));
+                if (protectedUser && String(protectedUser.role || '').toLowerCase() === 'developer') { showModal('Akun Developer dilindungi dan tidak dapat diedit dari menu anggota.', 'Aksi Ditolak'); return; }
+                if (protectedUser && String(protectedUser.role || '').toLowerCase() === 'admin' && currentUser?.role !== 'developer') { showModal('Hanya Developer yang dapat mengubah akun Admin.', 'Aksi Ditolak'); return; }
+            }
             document.getElementById('modal-user-id').value = userId || '';
             document.getElementById('modal-user-title').innerText = userId ? 'Edit Data Anggota' : 'Tambah Anggota Baru';
 
@@ -4037,7 +4127,11 @@
                     document.getElementById('modal-pass').value = '';
                     document.getElementById('modal-address').value = u.address;
                     document.getElementById('modal-daily-nominal').value = u.dailyNominal || 2000;
-                    document.getElementById('modal-role').value = u.role;
+                    const roleSelect = document.getElementById('modal-role');
+                    roleSelect.innerHTML = '<option value="warga">Warga</option><option value="petugas">Petugas</option>';
+                    if (String(u.role || '').toLowerCase() === 'admin') roleSelect.insertAdjacentHTML('beforeend', '<option value="admin">Admin</option>');
+                    roleSelect.value = u.role;
+                    roleSelect.disabled = String(u.role || '').toLowerCase() === 'admin';
                     document.getElementById('modal-status').value = u.status || 'Kosong';
                 }
             } else {
@@ -4047,7 +4141,10 @@
                 document.getElementById('modal-pass').value = '';
                 document.getElementById('modal-address').value = '';
                 document.getElementById('modal-daily-nominal').value = 2000;
-                document.getElementById('modal-role').value = 'warga';
+                const roleSelect = document.getElementById('modal-role');
+                roleSelect.innerHTML = '<option value="warga">Warga</option><option value="petugas">Petugas</option>';
+                roleSelect.disabled = false;
+                roleSelect.value = 'warga';
                 document.getElementById('modal-status').value = 'Kosong';
             }
 
@@ -4058,8 +4155,63 @@
             document.getElementById('modal-user').classList.add('hidden');
         }
 
+        function openDeveloperAdminModal() {
+            if (!requireDeveloper('Hanya Developer yang dapat membuat akun Admin.')) return;
+            const form = document.getElementById('form-developer-admin');
+            if (form) form.reset();
+            const modal = document.getElementById('modal-developer-admin');
+            if (modal) { modal.classList.remove('hidden'); modal.classList.add('flex'); }
+        }
+
+        function closeDeveloperAdminModal() {
+            const modal = document.getElementById('modal-developer-admin');
+            if (modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
+        }
+
+        async function createAdminAccountFromDeveloper(e) {
+            e.preventDefault();
+            if (!isDeveloper()) { showModal('Hanya Developer yang dapat membuat akun Admin.', 'Akses Ditolak'); return; }
+            if (!supabaseConfig || !supabaseAuthSession) { showModal('Koneksi Supabase dan sesi Developer diperlukan.', 'Belum Terhubung'); return; }
+            const displayName = document.getElementById('developer-admin-name').value.trim();
+            const email = document.getElementById('developer-admin-email').value.trim().toLowerCase();
+            const password = document.getElementById('developer-admin-password').value;
+            if (!displayName || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showModal('Nama dan alamat email Admin harus valid.', 'Data Tidak Valid'); return; }
+            if (password.length < 8) { showModal('Kata sandi awal minimal 8 karakter.', 'Data Tidak Valid'); return; }
+            const submit = document.getElementById('developer-admin-submit');
+            if (submit) { submit.disabled = true; submit.textContent = 'Membuat akun...'; }
+            try {
+                const token = await getValidAccessToken();
+                const endpoint = supabaseConfig.url.replace(/\/+$/, '') + '/functions/v1/manage-jimpitan-user';
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': supabaseConfig.key,
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ action: 'create_admin', role: 'admin', email, display_name: displayName, password, is_active: true }),
+                    cache: 'no-store'
+                });
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok || result.ok !== true) throw new Error(result.error || result.message || ('HTTP ' + response.status));
+                closeDeveloperAdminModal();
+                await syncRegisteredProfilesToMembers();
+                saveDB();
+                renderUserTable();
+                renderDashboardData();
+                logActivity('Developer membuat akun Admin baru: ' + email);
+                showModal('Akun Admin berhasil dibuat. Email: ' + email + '. ID anggota: ' + (result.member_id || 'sedang disinkronkan') + '. Admin sudah dapat login menggunakan kata sandi awal yang ditetapkan.', 'Akun Admin Berhasil Dibuat');
+            } catch (err) {
+                console.error('Pembuatan akun Admin gagal:', err);
+                showModal('Akun Admin belum berhasil dibuat. ' + (err.message || err) + '. Pastikan Edge Function manage-jimpitan-user versi terbaru sudah dipasang dan secret Supabase tersedia.', 'Gagal Membuat Akun');
+            } finally {
+                if (submit) { submit.disabled = false; submit.textContent = 'Buat Akun Admin'; }
+            }
+        }
+
         function saveUserModal(e) {
             e.preventDefault();
+            if (!isAdminOrDeveloper()) { showModal('Hanya Admin atau Developer yang dapat mengelola anggota.', 'Akses Ditolak'); return; }
             const id = document.getElementById('modal-user-id').value;
             const name = document.getElementById('modal-name').value.trim();
             const username = document.getElementById('modal-username').value.trim();
@@ -4068,11 +4220,13 @@
             const address = document.getElementById('modal-address').value.trim();
             const dailyNominal = Number(document.getElementById('modal-daily-nominal').value);
             if (!isValidAmount(dailyNominal)) { showModal('Nominal harian harus lebih dari Rp 0 dan berupa angka yang valid.', 'Data Tidak Valid'); return; }
-            const role = document.getElementById('modal-role').value;
+            const selectedRole = document.getElementById('modal-role').value;
             const status = document.getElementById('modal-status').value;
 
             if (id) {
                 const u = db.users.find(x => Number(x.id) === Number(id));
+                const role = u && String(u.role || '').toLowerCase() === 'admin' ? 'admin' : selectedRole;
+                if (u && String(u.role || '').toLowerCase() === 'developer') { showModal('Akun Developer dilindungi dan tidak dapat diubah dari menu anggota.', 'Aksi Ditolak'); return; }
                 if (u) {
                     u.name = name;
                     u.username = username;
@@ -4085,6 +4239,8 @@
                     logActivity(`Edit data warga: ${name}`);
                 }
             } else {
+                const role = selectedRole;
+                if (!['warga', 'petugas'].includes(role)) { showModal('Akun Admin hanya dapat dibuat melalui menu khusus Developer.', 'Akses Ditolak'); return; }
                 if (db.users.some(x => String(x.username || '').toLowerCase() === username.toLowerCase())) {
                     showModal('Username sudah ada. Gunakan username lain.', 'Peringatan');
                     return;
@@ -4112,7 +4268,7 @@
         }
 
         async function deleteUser(userId) {
-            if (!currentUser || currentUser.role !== 'admin') {
+            if (!currentUser || !isAdminOrDeveloper()) {
                 showModal('Hanya admin yang dapat menghapus data anggota.', 'Akses Ditolak');
                 return;
             }
@@ -4122,6 +4278,14 @@
                 return;
             }
             const target = db.users[idx];
+            if (String(target.role || '').toLowerCase() === 'developer') {
+                showModal('Akun Developer dilindungi dan tidak dapat dihapus dari menu anggota.', 'Aksi Ditolak');
+                return;
+            }
+            if (String(target.role || '').toLowerCase() === 'admin' && currentUser?.role !== 'developer') {
+                showModal('Hanya Developer yang dapat menonaktifkan akun Admin.', 'Aksi Ditolak');
+                return;
+            }
             const targetEmail = String(target.email || target.username || '').trim().toLowerCase();
             const currentEmail = String(currentUser.email || currentUser.username || '').trim().toLowerCase();
             if ((target.authUid && currentUser.authUid && target.authUid === currentUser.authUid) ||
@@ -4358,10 +4522,7 @@
         }
 
         async function saveUiSettings() {
-            if (!currentUser || currentUser.role !== 'admin') {
-                showModal('Hanya administrator yang boleh mengubah logo dan splash screen.', 'Akses Ditolak');
-                return;
-            }
+            if (!requireDeveloper('Hanya Developer yang boleh mengubah logo dan splash screen.')) return;
             const fontInput = document.getElementById('setting-fontsize');
             const logoUrlInput = document.getElementById('setting-logo-url').value.trim();
             const logoFile = document.getElementById('setting-logo-file').files[0];
@@ -4395,10 +4556,7 @@
         }
 
         async function resetUiSettings() {
-            if (!currentUser || currentUser.role !== 'admin') {
-                showModal('Hanya administrator yang boleh mereset pengaturan tampilan.', 'Akses Ditolak');
-                return;
-            }
+            if (!requireDeveloper('Hanya Developer yang boleh mereset pengaturan tampilan.')) return;
             const defaults = { fontSize: '16px' };
             try {
                 localStorage.setItem('jimpitan_ui_settings', JSON.stringify(defaults));
@@ -4489,6 +4647,7 @@
 
         // --- SUPABASE CONFIG MODAL HANDLERS ---
         function openConfigModal() {
+            if (!requireDeveloper('Pengaturan database dan koneksi Supabase hanya dapat dibuka oleh Developer.')) return;
             if (supabaseConfig) {
                 document.getElementById('supabaseUrlInput').value = supabaseConfig.url || '';
                 document.getElementById('supabaseKeyInput').value = supabaseConfig.key || '';
@@ -4501,6 +4660,7 @@
         }
 
         function saveSupabaseConfig() {
+            if (!requireDeveloper('Hanya Developer yang boleh mengubah konfigurasi database.')) return;
             const url = document.getElementById('supabaseUrlInput').value.trim();
             const key = document.getElementById('supabaseKeyInput').value.trim();
 
@@ -4522,6 +4682,7 @@
         }
 
         function clearSupabaseConfig() {
+            if (!requireDeveloper('Hanya Developer yang boleh mengubah konfigurasi database.')) return;
             sharedDashboardSummary = null;
             supabaseConfig = null;
             supabaseAuthSession = null;
@@ -4539,7 +4700,8 @@
         // Label pada kartu QR mengikuti role akun, bukan memakai sebutan umum "Pengurus".
         function getQrRoleLabel(role) {
             const labels = {
-                admin: 'Administrator',
+                developer: 'Developer',
+                admin: 'Admin Operasional',
                 petugas: 'Petugas',
                 warga: 'Warga'
             };
