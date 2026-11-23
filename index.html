@@ -1920,8 +1920,43 @@
                 throw new Error('ID anggota kanonis belum dapat diverifikasi. Hubungkan internet lalu coba kembali.');
             }
 
-            // Selalu verifikasi ke tabel sumber. Jangan langsung mempercayai memberId
-            // lokal karena snapshot lama dapat menyimpan ID yang sudah tidak berlaku.
+            // Petugas tidak diberi SELECT langsung ke jimpitan_warga_status oleh RLS.
+            // Untuk Petugas, verifikasi melalui direktori terbatas yang memang disediakan
+            // khusus bagi Petugas. RPC jimpitan_record_setoran akan memvalidasi ulang ID,
+            // status aktif, dan nominal di sisi database sebelum menyimpan transaksi.
+            if (currentUser && currentUser.role === 'petugas') {
+                const petugasCandidates = [
+                    user.memberId, user.member_id, user.member_id_akun,
+                    user.member_id_status, user.id
+                ].map(value => value == null ? '' : String(value).trim())
+                 .filter(value => value && !/^\d+$/.test(value));
+                if (!petugasCandidates.length) {
+                    throw new Error('ID anggota belum tersedia pada direktori Petugas. Muat ulang daftar anggota.');
+                }
+                for (const candidate of [...new Set(petugasCandidates)]) {
+                    const scopedRows = await restRequest(
+                        'jimpitan_petugas_members',
+                        'member_id=eq.' + encodeURIComponent(candidate) +
+                        '&is_active=eq.true&select=member_id,display_name,address&limit=2'
+                    );
+                    if (!Array.isArray(scopedRows)) {
+                        throw new Error('Direktori anggota Petugas tidak dapat diverifikasi. Muat ulang data Petugas.');
+                    }
+                    if (scopedRows.length === 1 && String(scopedRows[0].member_id).trim() === candidate) {
+                        user.memberId = candidate;
+                        user.member_id = candidate;
+                        return candidate;
+                    }
+                    if (scopedRows.length > 1) {
+                        throw new Error('ID ' + candidate + ' muncul lebih dari satu kali di direktori Petugas. Hubungi Admin.');
+                    }
+                }
+                throw new Error('ID anggota tidak ditemukan atau tidak aktif pada direktori Petugas. Muat ulang daftar anggota dan hubungi Admin jika masih terjadi.');
+            }
+
+            // Admin/Developer/Warga memverifikasi ke tabel sumber sesuai hak akses RLS.
+            // Jangan langsung mempercayai memberId lokal karena snapshot lama dapat
+            // menyimpan ID yang sudah tidak berlaku.
             const rows = await restRequest(
                 'jimpitan_warga_status',
                 'select=member_id,display_name,address'
