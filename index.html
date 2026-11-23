@@ -1924,7 +1924,8 @@
             // Untuk Petugas, verifikasi melalui direktori terbatas yang memang disediakan
             // khusus bagi Petugas. RPC jimpitan_record_setoran akan memvalidasi ulang ID,
             // status aktif, dan nominal di sisi database sebelum menyimpan transaksi.
-            if (currentUser && currentUser.role === 'petugas') {
+            const activeRoleForMemberCheck = String(currentUser?.role || '').trim().toLowerCase();
+            if (activeRoleForMemberCheck === 'petugas') {
                 const petugasCandidates = [
                     user.memberId, user.member_id, user.member_id_akun,
                     user.member_id_status, user.id
