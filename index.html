@@ -1902,9 +1902,47 @@
             if (typeof renderDashboardData === 'function' && currentUser) { renderDashboardData(); }
         }
 
+        // Pastikan semua transaksi cloud memakai ID kanonis dari jimpitan_warga_status.
+        // ID numerik lokal (mis. 1, 2, 3) tidak boleh dikirim sebagai member_id Supabase.
+        async function ensureCanonicalMemberId(user) {
+            if (!user || typeof user !== 'object') throw new Error('Data anggota tidak valid.');
+            const candidates = [user.memberId, user.member_id, user.member_id_akun, user.member_id_status, user.id]
+                .map(value => value == null ? '' : String(value).trim())
+                .filter(Boolean);
+            const canonical = candidates.find(value => !/^\d+$/.test(value));
+            if (canonical) {
+                user.memberId = canonical;
+                return canonical;
+            }
+            if (!supabaseConfig || !supabaseAuthSession || !navigator.onLine) {
+                throw new Error('ID anggota kanonis belum tersedia. Hubungkan internet dan muat ulang data anggota sebelum mencatat setoran.');
+            }
+            const rows = await restRequest('jimpitan_warga_status',
+                'select=member_id,display_name,address');
+            if (!Array.isArray(rows)) throw new Error('Data ID anggota dari Supabase tidak valid.');
+            const nameKey = normalizeMemberMatch(user.name || user.display_name);
+            const addressKey = normalizeMemberMatch(user.address);
+            if (!nameKey || !addressKey) throw new Error('Nama dan alamat anggota belum cukup untuk memverifikasi ID kanonis.');
+            const matches = rows.filter(row =>
+                normalizeMemberMatch(row.display_name) === nameKey &&
+                normalizeMemberMatch(row.address) === addressKey &&
+                row.member_id != null && String(row.member_id).trim() !== '' &&
+                !/^\d+$/.test(String(row.member_id).trim())
+            );
+            if (matches.length !== 1) {
+                throw new Error(matches.length > 1
+                    ? 'Ditemukan lebih dari satu ID dengan nama dan alamat anggota yang sama. Admin harus memeriksa data terlebih dahulu.'
+                    : 'ID anggota kanonis tidak ditemukan di jimpitan_warga_status. Setoran tidak dikirim agar ID lama tidak muncul kembali.');
+            }
+            const memberId = String(matches[0].member_id).trim();
+            user.memberId = memberId;
+            return memberId;
+        }
+
         async function sendPetugasSetoran(user, amount, dateTime, clientId, paymentDays = 1) {
+            const canonicalMemberId = await ensureCanonicalMemberId(user);
             const args = {
-                p_client_id: String(clientId), p_member_id: String(user.memberId || user.member_id || user.id),
+                p_client_id: String(clientId), p_member_id: canonicalMemberId,
                 p_amount: Number(amount), p_date_time: String(dateTime || makeRecordTimestamp()),
                 p_name: String(user.name || '') + (Number(paymentDays) > 1 ? ' (Rapel ' + Number(paymentDays) + ' hari)' : ''), p_processed_by: String(currentUser?.name || 'Petugas')
             };
@@ -1918,8 +1956,24 @@
             const remaining = [];
             for (const item of queue) {
                 try {
-                    const user = db.users.find(u => String(u.id) === String(item.member_id || item.localRecord?.memberId || item.localRecord?.userId));
+                    let user = db.users.find(u =>
+                        String(u.id) === String(item.member_id || item.localRecord?.memberId || item.localRecord?.userId) ||
+                        String(u.memberId || u.member_id || '') === String(item.member_id || item.localRecord?.memberId || '')
+                    );
+                    // Antrean lama mungkin masih menyimpan ID numerik. Pulihkan anggota
+                    // hanya jika nama dan alamat pada catatan lokal cocok secara unik.
+                    if (!user && item.localRecord) {
+                        const queuedName = String(item.localRecord.name || '').replace(/\s*\(Rapel \d+ hari\)$/i, '');
+                        const queuedNameKey = normalizeMemberMatch(queuedName);
+                        const queuedAddressKey = normalizeMemberMatch(item.localRecord.address);
+                        const matches = db.users.filter(u => queuedNameKey && queuedAddressKey &&
+                            normalizeMemberMatch(u.name || u.display_name) === queuedNameKey &&
+                            normalizeMemberMatch(u.address) === queuedAddressKey);
+                        if (matches.length === 1) user = matches[0];
+                    }
                     if (!user) { remaining.push(item); continue; }
+                    const canonicalMemberId = await ensureCanonicalMemberId(user);
+                    item.member_id = canonicalMemberId;
                     await sendPetugasSetoran(user, Number(item.amount), item.date_time, item.client_id, Number(item.payment_days || item.localRecord?.paymentDays || 1));
                     await syncWargaStatusPaid(user, String(item.date_time || getTodayDateString()).slice(0, 10));
                 } catch (e) {
@@ -3161,7 +3215,7 @@
         // pembaruan status petugas setelah transaksi setoran/rapel berhasil masuk server.
         async function syncWargaStatusPaid(user, paidDate = getTodayDateString()) {
             if (!supabaseConfig || !supabaseAuthSession) throw new Error('Supabase belum terhubung; status belum tersinkron ke server.');
-            const memberId = String(user?.memberId || user?.member_id || user?.member_id_status || user?.id || '').trim();
+            const memberId = await ensureCanonicalMemberId(user);
             if (!memberId) throw new Error('ID warga tidak ditemukan; status Supabase tidak dapat diperbarui.');
             const raw = await restRequest('rpc/jimpitan_update_warga_status', '', {
                 method: 'POST',
@@ -3274,6 +3328,16 @@
 
             const user = db.users.find(u => String(u.id) === String(userId));
             if (!user) return;
+            // Saat cloud aktif, verifikasi ID sebelum transaksi lokal dibuat atau masuk antrean.
+            // Dengan begitu ID numerik lama tidak tersimpan kembali sebagai member_id.
+            if (supabaseConfig && supabaseAuthSession) {
+                try {
+                    await ensureCanonicalMemberId(user);
+                } catch (memberIdErr) {
+                    showModal('Setoran dibatalkan demi keamanan ID anggota: ' + memberIdErr.message, 'ID Anggota Belum Valid');
+                    return;
+                }
+            }
             const dailyNominal = Number(user.dailyNominal || 2000);
             if (isRapel && amount !== dailyNominal * rapelDays) {
                 showModal('Total rapel harus sama dengan nominal harian Rp ' + dailyNominal.toLocaleString('id-ID') + ' × ' + rapelDays + ' hari.', 'Total Rapel Tidak Sesuai');
