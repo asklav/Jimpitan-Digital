@@ -90,31 +90,24 @@
             pointer-events: none;
         }
 
-        /* Kartu QR anggota: ukuran kartu PVC standar dan cetak khusus */
-        #my-qrcode-render canvas, #my-qrcode-render img { width: 220px !important; height: 220px !important; image-rendering: pixelated; }
-        #modal-qrcode-canvas canvas, #modal-qrcode-canvas img { width: 280px !important; height: 280px !important; image-rendering: pixelated; }
-        #print-area { width: 100%; max-width: 390px; }
+        /* CSS Khusus Cetak QR Code Rumah */
         @media print {
-            @page { size: 90mm 60mm; margin: 0; }
-            html, body { width: 90mm !important; height: 60mm !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
-            body * { visibility: hidden !important; }
-            #print-area, #print-area * { visibility: visible !important; }
-            #modal-qrcode { display: block !important; position: static !important; inset: auto !important; padding: 0 !important; margin: 0 !important; background: #fff !important; }
-            #modal-qrcode > div { display: contents !important; }
-            #print-area {
-                display: flex !important; position: absolute !important; left: 0 !important; top: 0 !important;
-                width: 85.6mm !important; height: 54mm !important; max-width: none !important;
-                margin: 3mm 2.2mm !important; padding: 3mm !important; gap: 3mm !important;
-                flex-direction: row !important; align-items: center !important; justify-content: flex-start !important;
-                border: .35mm solid #0f766e !important; border-radius: 2mm !important;
-                background: #fff !important; color: #111827 !important; box-shadow: none !important;
-                overflow: hidden !important;
+            body * {
+                visibility: hidden;
             }
-            #print-area > div:first-child { display: none !important; }
-            #modal-qrcode-canvas { flex: 0 0 36mm !important; width: 36mm !important; height: 36mm !important; padding: 0 !important; }
-            #modal-qrcode-canvas canvas, #modal-qrcode-canvas img { display: block !important; width: 36mm !important; height: 36mm !important; }
-            #modal-qr-name { font-size: 12pt !important; line-height: 1.15 !important; margin: 0 0 2mm !important; overflow-wrap: anywhere !important; }
-            #modal-qr-info { font-size: 7pt !important; line-height: 1.3 !important; overflow-wrap: anywhere !important; }
+            #print-area, #print-area * {
+                visibility: visible;
+            }
+            #print-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 20px;
+                background: white !important;
+                color: black !important;
+            }
             .no-print { display: none !important; }
         }
 
@@ -1771,21 +1764,9 @@
                 const localRows = Array.isArray(localPayload?.[key]) ? localPayload[key] : [];
                 const byKey = new Map();
                 cloudRows.forEach((row, index) => byKey.set(identity(row, index, 'cloud'), row));
-                // Local menang jika identitas sama, tetapi data cloud yang tidak ada di lokal tetap dipertahankan.
+                // Local menang jika identitas sama, tetapi data cloud yang tidak ada di lokal tidak dibuang.
                 localRows.forEach((row, index) => byKey.set(identity(row, index, 'local'), row));
                 merged[key] = Array.from(byKey.values());
-            }
-            // Penghapusan transaksi harus eksplisit. Tanpa tombstone, merge union di atas
-            // akan memasukkan kembali baris cloud yang sengaja dihapus dari perangkat ini.
-            const deletedIds = new Set([
-                ...(Array.isArray(cloudPayload?.deletedJimpitanIds) ? cloudPayload.deletedJimpitanIds : []),
-                ...(Array.isArray(localPayload?.deletedJimpitanIds) ? localPayload.deletedJimpitanIds : [])
-            ].map(v => String(v)));
-            merged.deletedJimpitanIds = Array.from(deletedIds);
-            if (deletedIds.size && Array.isArray(merged.jimpitan)) {
-                merged.jimpitan = merged.jimpitan.filter(row =>
-                    ![row?.id, row?.clientId, row?.client_id].some(v => v !== undefined && v !== null && deletedIds.has(String(v)))
-                );
             }
             if (cloudPayload?.__uiSettings || localPayload?.__uiSettings) {
                 merged.__uiSettings = {
@@ -1939,44 +1920,8 @@
                 throw new Error('ID anggota kanonis belum dapat diverifikasi. Hubungkan internet lalu coba kembali.');
             }
 
-            // Petugas tidak diberi SELECT langsung ke jimpitan_warga_status oleh RLS.
-            // Untuk Petugas, verifikasi melalui direktori terbatas yang memang disediakan
-            // khusus bagi Petugas. RPC jimpitan_record_setoran akan memvalidasi ulang ID,
-            // status aktif, dan nominal di sisi database sebelum menyimpan transaksi.
-            const activeRoleForMemberCheck = String(currentUser?.role || '').trim().toLowerCase();
-            if (activeRoleForMemberCheck === 'petugas') {
-                const petugasCandidates = [
-                    user.memberId, user.member_id, user.member_id_akun,
-                    user.member_id_status, user.id
-                ].map(value => value == null ? '' : String(value).trim())
-                 .filter(value => value && !/^\d+$/.test(value));
-                if (!petugasCandidates.length) {
-                    throw new Error('ID anggota belum tersedia pada direktori Petugas. Muat ulang daftar anggota.');
-                }
-                for (const candidate of [...new Set(petugasCandidates)]) {
-                    const scopedRows = await restRequest(
-                        'jimpitan_petugas_members',
-                        'member_id=eq.' + encodeURIComponent(candidate) +
-                        '&is_active=eq.true&select=member_id,display_name,address&limit=2'
-                    );
-                    if (!Array.isArray(scopedRows)) {
-                        throw new Error('Direktori anggota Petugas tidak dapat diverifikasi. Muat ulang data Petugas.');
-                    }
-                    if (scopedRows.length === 1 && String(scopedRows[0].member_id).trim() === candidate) {
-                        user.memberId = candidate;
-                        user.member_id = candidate;
-                        return candidate;
-                    }
-                    if (scopedRows.length > 1) {
-                        throw new Error('ID ' + candidate + ' muncul lebih dari satu kali di direktori Petugas. Hubungi Admin.');
-                    }
-                }
-                throw new Error('ID anggota tidak ditemukan atau tidak aktif pada direktori Petugas. Muat ulang daftar anggota dan hubungi Admin jika masih terjadi.');
-            }
-
-            // Admin/Developer/Warga memverifikasi ke tabel sumber sesuai hak akses RLS.
-            // Jangan langsung mempercayai memberId lokal karena snapshot lama dapat
-            // menyimpan ID yang sudah tidak berlaku.
+            // Selalu verifikasi ke tabel sumber. Jangan langsung mempercayai memberId
+            // lokal karena snapshot lama dapat menyimpan ID yang sudah tidak berlaku.
             const rows = await restRequest(
                 'jimpitan_warga_status',
                 'select=member_id,display_name,address'
@@ -2299,13 +2244,11 @@
             );
             if (!Array.isArray(rows)) throw new Error('Data transaksi petugas dari server bukan daftar.');
             if (!Array.isArray(db.jimpitan)) db.jimpitan = [];
-            const deletedIds = new Set((Array.isArray(db.deletedJimpitanIds) ? db.deletedJimpitanIds : []).map(v => String(v)));
-            // Tombstone dicek terhadap client_id SEBELUM transaksi sumber dimasukkan kembali.
-            // Inilah jalur yang sebelumnya membuat transaksi terhapus muncul lagi setiap polling.
-            const activeRows = rows.filter(row => !deletedIds.has(String(row.client_id || row.id || '')));
-            const remote = activeRows.map(petugasTransactionToLocal);
+            const remote = rows.map(petugasTransactionToLocal);
             const remoteClientIds = new Set(remote.map(x => String(x.id)));
-            const remoteMemberIds = new Set(activeRows.map(x => String(x.member_id || '')));
+            // Hapus salinan lama dari sumber yang sama, lalu masukkan versi server.
+            // Transaksi kas/admin lain tetap dipertahankan.
+            const remoteMemberIds = new Set(rows.map(x => String(x.member_id || '')));
             db.jimpitan = db.jimpitan.filter(tx => {
                 const txId = String(tx.clientId || tx.client_id || tx.id || '');
                 if (remoteClientIds.has(txId)) return false;
@@ -3277,8 +3220,8 @@
                 if (isAdminOrPetugas) {
                     actionTd = `
                         <td class="p-3.5 text-center space-x-2">
-                            <button onclick="editTransaction(decodeURIComponent('${encodeURIComponent(String(item.id))}'))" class="text-indigo-400 hover:text-indigo-300 p-1 cursor-pointer" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
-                            ${isAdminOrDeveloper() ? `<button onclick="deleteTransaction(decodeURIComponent('${encodeURIComponent(String(item.id))}'))" class="text-rose-400 hover:text-rose-300 p-1 cursor-pointer" title="Hapus"><i class="fa-solid fa-trash-can"></i></button>` : ''}
+                            <button onclick="editTransaction(${Number(item.id)})" class="text-indigo-400 hover:text-indigo-300 p-1 cursor-pointer" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
+                            ${isAdminOrDeveloper() ? `<button onclick="deleteTransaction(${Number(item.id)})" class="text-rose-400 hover:text-rose-300 p-1 cursor-pointer" title="Hapus"><i class="fa-solid fa-trash-can"></i></button>` : ''}
                         </td>
                     `;
                 } else {
@@ -3594,7 +3537,7 @@
             timeInput.value = nowParts.time;
 
             if (transId) {
-                const item = db.jimpitan.find(t => String(t.id) === String(transId) || String(t.clientId || t.client_id || '') === String(transId));
+                const item = db.jimpitan.find(t => Number(t.id) === Number(transId));
                 if (item) {
                     document.getElementById('modal-trans-type').value = item.type;
                     document.getElementById('modal-trans-name').value = item.name || item.description || '';
@@ -3631,7 +3574,7 @@
             label.innerText = type === 'Masuk' ? 'Keterangan / Nama Warga Setor' : 'Keterangan Pengeluaran / Keperluan Desa';
         }
 
-        async function saveTransactionModal(e) {
+        function saveTransactionModal(e) {
             e.preventDefault();
             if (!currentUser || !isAdminOrDeveloper()) { showModal('Petugas hanya dapat mencatat setoran jimpitan. Pengelolaan transaksi kas hanya untuk administrator.', 'Akses Ditolak'); return; }
             const id = document.getElementById('modal-trans-id').value;
@@ -3640,6 +3583,7 @@
             const timeVal = document.getElementById('modal-trans-time').value;
             const name = document.getElementById('modal-trans-name').value.trim();
             const amount = Number(document.getElementById('modal-trans-amount').value);
+
             if (!name || name.length > 250) { showModal('Keterangan wajib diisi dan maksimal 250 karakter.', 'Data Tidak Valid'); return; }
             if (!isValidAmount(amount)) { showModal('Nominal harus berupa angka lebih dari Rp 0 dan tidak melebihi batas sistem.', 'Data Tidak Valid'); return; }
             if (!['Masuk','Keluar'].includes(type)) { showModal('Jenis transaksi tidak valid.', 'Data Tidak Valid'); return; }
@@ -3647,78 +3591,36 @@
             if (!/^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/.test(timeVal)) { showModal('Jam transaksi tidak valid.', 'Data Tidak Valid'); return; }
             const transactionDateTime = parseLocalDateTime(dateVal, timeVal);
             if (Number.isNaN(transactionDateTime.getTime())) { showModal('Tanggal dan jam transaksi tidak valid.', 'Data Tidak Valid'); return; }
-            if (supabaseAuthSession && supabaseConfig && !navigator.onLine) { showModal('Perubahan transaksi membutuhkan internet agar dapat dipastikan tersimpan di Supabase. Data belum diubah.', 'Perlu Internet'); return; }
 
-            const previousDb = JSON.parse(JSON.stringify(db));
-            const wasDirty = localDirty;
-            const existing = id ? db.jimpitan.find(t => String(t.id) === String(id)) : null;
-            if (id && !existing) { showModal('Transaksi tidak ditemukan. Muat ulang data sebelum mengedit.', 'Data Tidak Ditemukan'); return; }
-            const isPetugasSource = !!(existing && (existing.source === 'petugas' || existing.clientId != null || existing.client_id != null));
-            let sourceBefore = null;
-            if (isPetugasSource && supabaseAuthSession && supabaseConfig) {
-                if (type !== 'Masuk') { showModal('Transaksi setoran petugas hanya dapat diubah sebagai Uang Masuk. Buat transaksi Uang Keluar terpisah untuk pengeluaran kas.', 'Jenis Transaksi'); return; }
-                const clientId = String(existing.clientId || existing.client_id || existing.id);
-                try {
-                    const rows = await restRequest('jimpitan_petugas_transactions', 'client_id=eq.' + encodeURIComponent(clientId) + '&select=*');
-                    if (!Array.isArray(rows) || rows.length !== 1) throw new Error('Baris sumber transaksi petugas tidak ditemukan tepat satu.');
-                    sourceBefore = rows[0];
-                    await restRequest('jimpitan_petugas_transactions', 'client_id=eq.' + encodeURIComponent(clientId), {
-                        method: 'PATCH', headers: { 'Prefer': 'return=minimal' },
-                        body: { amount, date_time: makeRecordTimestamp(transactionDateTime), processed_by: currentUser.name, display_name: name.replace(/^Setoran Jimpitan\s*/i, '').replace(/\s*\([^)]*\)\s*$/, '') }
-                    });
-                    const verify = await restRequest('jimpitan_petugas_transactions', 'client_id=eq.' + encodeURIComponent(clientId) + '&select=client_id,amount,date_time');
-                    if (!Array.isArray(verify) || verify.length !== 1 || Number(verify[0].amount) !== amount || Math.abs(Date.parse(verify[0].date_time) - Date.parse(makeRecordTimestamp(transactionDateTime))) > 1000) {
-                        throw new Error('Supabase belum mengonfirmasi perubahan transaksi petugas. Periksa izin UPDATE/SELECT dan RLS.');
-                    }
-                } catch (err) {
-                    showModal('Edit transaksi petugas gagal disimpan ke tabel sumber Supabase. ' + (err?.message || String(err)), 'Edit Gagal');
-                    return;
-                }
-            }
-
-            let savedTransactionId = id ? String(id) : null;
             if (id) {
-                existing.type = type; existing.name = name; existing.amount = amount;
-                existing.dateTime = makeRecordTimestamp(transactionDateTime); existing.paymentDate = dateVal;
-                existing.editedBy = currentUser.name;
+                const item = db.jimpitan.find(t => Number(t.id) === Number(id));
+                if (item) {
+                    item.type = type;
+                    item.name = name;
+                    item.amount = amount;
+                    item.dateTime = makeRecordTimestamp(transactionDateTime);
+                    item.paymentDate = dateVal;
+                    item.editedBy = currentUser.name;
+                    logActivity(`Edit transaksi ID #${id}: ${name} (Rp ${amount.toLocaleString('id-ID')})`);
+                }
             } else {
-                savedTransactionId = String(Date.now()) + String(Math.floor(Math.random() * 1000));
-                db.jimpitan.push({ id: savedTransactionId, userId: null, name, amount, type,
-                    dateTime: makeRecordTimestamp(transactionDateTime), paymentDate: dateVal, processedBy: currentUser.name });
+                db.jimpitan.push({
+                    id: Date.now(),
+                    userId: null,
+                    name: name,
+                    amount: amount,
+                    type: type,
+                    dateTime: makeRecordTimestamp(transactionDateTime),
+                    paymentDate: dateVal,
+                    processedBy: currentUser.name
+                });
+                logActivity(`Tambah transaksi baru: [${type}] ${name} (Rp ${amount.toLocaleString('id-ID')})`);
             }
-            if (!saveDB()) { db = previousDb; return; }
-            if (supabaseAuthSession && supabaseConfig) {
-                const synced = await runCloudSync('Admin');
-                let snapshotVerified = false;
-                if (synced && !localDirty) {
-                    try {
-                        const cloudRow = await fetchCloudState();
-                        const cloudItems = Array.isArray(cloudRow?.payload?.jimpitan) ? cloudRow.payload.jimpitan : [];
-                        const savedItem = id
-                            ? cloudItems.find(t => String(t.id) === String(id) || String(t.clientId || t.client_id || '') === String(id))
-                            : cloudItems.find(t => String(t.id) === String(savedTransactionId));
-                        snapshotVerified = !!savedItem &&
-                            String(savedItem.name || '') === String(name) &&
-                            Number(savedItem.amount) === amount &&
-                            String(savedItem.type || '') === String(type);
-                    } catch (verifyErr) {
-                        console.warn('Verifikasi snapshot transaksi gagal:', verifyErr);
-                    }
-                }
-                if (!synced || localDirty || !snapshotVerified) {
-                    if (sourceBefore) {
-                        try { await restRequest('jimpitan_petugas_transactions', 'client_id=eq.' + encodeURIComponent(String(sourceBefore.client_id)), { method: 'PATCH', headers: { 'Prefer': 'return=minimal' }, body: sourceBefore }); } catch (restoreErr) { console.error('Pemulihan transaksi sumber gagal:', restoreErr); }
-                    }
-                    db = previousDb; try { localStorage.setItem('jimpitan_db', JSON.stringify(db)); } catch (_) {}
-                    localDirty = wasDirty; if (!wasDirty) localStorage.removeItem('jimpitan_cloud_dirty');
-                    renderDashboardData();
-                    showModal('Transaksi belum dinyatakan berhasil karena penyimpanan snapshot belum terverifikasi di Supabase. Perubahan lokal dipulihkan. Detail: ' + (lastCloudSyncError?.message || 'Sinkronisasi gagal.'), 'Sinkronisasi Gagal');
-                    return;
-                }
-            }
-            logActivity(`${id ? 'Edit' : 'Tambah'} transaksi kas: ${name} (Rp ${amount.toLocaleString('id-ID')})`);
-            closeModalTransaction(); renderDashboardData();
-            showModal(supabaseAuthSession && supabaseConfig ? 'Transaksi berhasil disimpan dan dikonfirmasi di Supabase.' : 'Transaksi tersimpan di perangkat. Hubungkan Supabase untuk menyimpan perubahan ke cloud.', 'Sukses');
+
+            saveDB();
+            closeModalTransaction();
+            renderDashboardData();
+            showModal('Transaksi kas berhasil disimpan!', 'Sukses');
         }
 
         function editTransaction(id) {
@@ -3727,66 +3629,55 @@
 
         async function deleteTransaction(id) {
             if (!confirm('Apakah Anda yakin ingin menghapus transaksi ini?')) return;
-            const idx = db.jimpitan.findIndex(t => String(t.id) === String(id));
+            const idx = db.jimpitan.findIndex(t => Number(t.id) === Number(id));
             if (idx === -1) return;
-            if (supabaseAuthSession && supabaseConfig && !navigator.onLine) { showModal('Penghapusan membutuhkan koneksi internet agar transaksi di Supabase ikut terhapus. Data belum diubah.', 'Perlu Internet'); return; }
             const previousDb = JSON.parse(JSON.stringify(db));
             const deleted = db.jimpitan[idx];
-            const isPetugasSource = deleted.source === 'petugas' || deleted.clientId != null || deleted.client_id != null;
-            const clientId = String(deleted.clientId || deleted.client_id || id);
             let sourceRows = [];
-            if (supabaseAuthSession && supabaseConfig && isPetugasSource) {
+
+            // Transaksi petugas juga tersimpan di tabel sumber cloud. Hapus sumbernya
+            // terlebih dahulu agar trigger tidak memasukkannya kembali ke snapshot.
+            if (supabaseAuthSession && supabaseConfig) {
+                if (!navigator.onLine) {
+                    showModal('Penghapusan transaksi ini memerlukan koneksi internet agar salinan sumber di cloud ikut terhapus. Data belum diubah.', 'Perlu Internet');
+                    return;
+                }
                 try {
-                    sourceRows = await restRequest('jimpitan_petugas_transactions', 'client_id=eq.' + encodeURIComponent(clientId) + '&select=*');
-                    if (!Array.isArray(sourceRows) || sourceRows.length !== 1) throw new Error('Transaksi sumber tidak ditemukan tepat satu di Supabase.');
-                    await restRequest('jimpitan_petugas_transactions', 'client_id=eq.' + encodeURIComponent(clientId), {
+                    sourceRows = await restRequest('jimpitan_petugas_transactions', 'client_id=eq.' + encodeURIComponent(String(id)) + '&select=*');
+                    await restRequest('jimpitan_petugas_transactions', 'client_id=eq.' + encodeURIComponent(String(id)), {
                         method: 'DELETE', headers: { 'Prefer': 'return=minimal' }
                     });
-                    const remains = await restRequest('jimpitan_petugas_transactions', 'client_id=eq.' + encodeURIComponent(clientId) + '&select=client_id');
-                    if (!Array.isArray(remains) || remains.length !== 0) throw new Error('Supabase masih mengembalikan transaksi setelah perintah DELETE. Periksa policy RLS DELETE.');
                 } catch (err) {
-                    showModal('Transaksi belum dihapus dari aplikasi karena Supabase tidak mengonfirmasi penghapusan pada jimpitan_petugas_transactions. Periksa izin SELECT/DELETE dan RLS. Detail: ' + (err?.message || String(err)), 'Penghapusan Gagal');
+                    showModal('Transaksi belum dihapus karena sumber cloud gagal dibersihkan. Periksa izin SELECT/DELETE (RLS) pada tabel jimpitan_petugas_transactions. Detail: ' + (err && err.message ? err.message : String(err)), 'Penghapusan Gagal');
                     return;
                 }
             }
+
             db.jimpitan.splice(idx, 1);
-            if (!Array.isArray(db.deletedJimpitanIds)) db.deletedJimpitanIds = [];
-            [id, deleted.clientId, deleted.client_id].filter(v => v !== undefined && v !== null).forEach(v => {
-                if (!db.deletedJimpitanIds.some(x => String(x) === String(v))) db.deletedJimpitanIds.push(String(v));
-            });
-            if (!saveDB()) { db = previousDb; return; }
+            saveDB();
+            logActivity(`Hapus transaksi ID #${id} (${deleted.name})`);
+            renderDashboardData();
             if (supabaseAuthSession && supabaseConfig) {
-                const synced = await runCloudSync('Admin');
-                let deleteVerified = false;
-                if (synced && !localDirty) {
-                    try {
-                        const cloudRow = await fetchCloudState();
-                        const cloudItems = Array.isArray(cloudRow?.payload?.jimpitan) ? cloudRow.payload.jimpitan : [];
-                        const cloudDeletedIds = new Set((Array.isArray(cloudRow?.payload?.deletedJimpitanIds) ? cloudRow.payload.deletedJimpitanIds : []).map(v => String(v)));
-                        const stillExists = cloudItems.some(row =>
-                            [row?.id, row?.clientId, row?.client_id].some(v => v !== undefined && v !== null &&
-                                [String(id), String(deleted.clientId || ''), String(deleted.client_id || '')].includes(String(v)))
-                        );
-                        const tombstoneExists = [id, deleted.clientId, deleted.client_id]
-                            .filter(v => v !== undefined && v !== null)
-                            .some(v => cloudDeletedIds.has(String(v)));
-                        deleteVerified = !stillExists && tombstoneExists;
-                    } catch (verifyErr) {
-                        console.warn('Verifikasi penghapusan snapshot gagal:', verifyErr);
-                    }
-                }
-                if (!synced || localDirty || !deleteVerified) {
+                const syncOk = await syncAllToCloud();
+                if (syncOk !== true || localDirty) {
+                    // Batalkan secara konsisten jika snapshot belum tersimpan: pulihkan
+                    // sumber transaksi dan data lokal agar tidak terjadi kehilangan data.
                     let restoreError = null;
-                    try { if (sourceRows.length) await restRequest('jimpitan_petugas_transactions', '', { method: 'POST', headers: { 'Prefer': 'return=minimal' }, body: sourceRows }); }
-                    catch (e) { restoreError = e; }
-                    db = previousDb; try { localStorage.setItem('jimpitan_db', JSON.stringify(db)); } catch (_) {}
-                    localDirty = false; localStorage.removeItem('jimpitan_cloud_dirty'); renderDashboardData();
-                    showModal('Penghapusan dibatalkan karena snapshot Supabase belum terverifikasi benar-benar tidak memuat transaksi tersebut. Data lokal dipulihkan.' + (restoreError ? ' Pemulihan sumber cloud juga gagal: ' + restoreError.message : '') + ' Detail: ' + (lastCloudSyncError?.message || 'Sinkronisasi gagal.'), 'Sinkronisasi Gagal');
+                    try {
+                        if (Array.isArray(sourceRows) && sourceRows.length) {
+                            await restRequest('jimpitan_petugas_transactions', '', {
+                                method: 'POST', headers: { 'Prefer': 'return=minimal' }, body: sourceRows
+                            });
+                        }
+                    } catch (e) { restoreError = e; }
+                    db = previousDb;
+                    saveDB();
+                    renderDashboardData();
+                    showModal('Penghapusan dibatalkan karena snapshot cloud belum terkonfirmasi; data lokal dipulihkan.' + (restoreError ? ' Pemulihan tabel sumber juga gagal: ' + restoreError.message : '') + ' Detail: ' + (lastCloudSyncError?.message || 'Sinkronisasi belum selesai.'), 'Sinkronisasi Gagal');
                     return;
                 }
             }
-            logActivity(`Hapus transaksi ID #${id} (${deleted.name})`); renderDashboardData();
-            showModal(supabaseAuthSession && supabaseConfig ? 'Transaksi berhasil dihapus dari aplikasi dan Supabase.' : 'Transaksi dihapus dari perangkat. Penghapusan cloud memerlukan koneksi Supabase.', 'Terhapus');
+            showModal('Transaksi kas berhasil dihapus dari aplikasi dan sumber cloud.', 'Terhapus');
         }
 
         // --- JADWAL PETUGAS PENGAMBILAN JIMPITAN (Supabase table + RLS) ---
@@ -4686,8 +4577,8 @@
 
             new QRCode(container, {
                 text: buildMemberQrPayload(currentUser),
-                width: 220,
-                height: 220,
+                width: 140,
+                height: 140,
                 colorDark: "#0f172a",
                 colorLight: "#ffffff"
             });
@@ -4739,10 +4630,9 @@
             const roleLabel = getQrRoleLabel(user.role);
             const address = String(user.address || '').trim();
             const isGenericAddress = ['pengurus', 'administrator', 'admin', 'petugas', 'warga'].includes(address.toLowerCase());
-            const memberId = user.memberId ?? user.member_id ?? user.member_id_akun ?? user.member_id_status ?? user.id;
-            const detailParts = [`ID Anggota: ${memberId}`, roleLabel];
+            const detailParts = [roleLabel];
             if (address && !isGenericAddress) detailParts.push(address);
-            if (user.username && String(user.username) !== String(memberId)) detailParts.push(`Username: ${user.username}`);
+            if (user.username) detailParts.push(`ID: ${user.username}`);
             document.getElementById('modal-qr-info').innerText = detailParts.join(' | ');
 
             const canvasContainer = document.getElementById('modal-qrcode-canvas');
@@ -4750,8 +4640,8 @@
 
             new QRCode(canvasContainer, {
                 text: buildMemberQrPayload(user),
-                width: 280,
-                height: 280,
+                width: 160,
+                height: 160,
                 colorDark: "#0f172a",
                 colorLight: "#ffffff"
             });
@@ -4764,16 +4654,7 @@
         }
 
         function printSingleQrModal() {
-            const modal = document.getElementById('modal-qrcode');
-            const card = document.getElementById('print-area');
-            const qr = document.getElementById('modal-qrcode-canvas');
-            if (!card || !qr || !qr.querySelector('canvas, img')) {
-                showModal('QR Code belum selesai dibuat. Tekan Perbesar, tunggu QR tampil, lalu cetak kembali.', 'QR Belum Siap');
-                return;
-            }
-            if (modal) modal.classList.remove('hidden');
-            // Beri browser satu frame untuk menyiapkan layout cetak sebelum dialog print.
-            requestAnimationFrame(() => setTimeout(() => window.print(), 180));
+            window.print();
         }
 
         function printAllQrCodes() {
