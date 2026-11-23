@@ -479,6 +479,15 @@
                             </div>
                         </div>
 
+                        <!-- PEMBAYARAN MASUK UNTUK VERIFIKASI: TETAP DI DASHBOARD ADMIN/DEVELOPER -->
+                        <section id="payment-admin-dashboard-section" class="hidden bg-slate-900 rounded-2xl border border-amber-500/25 shadow-sm p-5 sm:p-6 space-y-4">
+                            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                                <div><h2 class="text-base font-bold text-white"><i class="fa-solid fa-clipboard-check text-amber-400 mr-2"></i>Pembayaran Masuk untuk Diverifikasi</h2><p class="text-xs text-slate-400 mt-1">Periksa bukti pembayaran warga, lalu setujui atau tolak pengajuan.</p></div>
+                                <button type="button" onclick="loadAdminPaymentSubmissions()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-200"><i class="fa-solid fa-rotate mr-1"></i>Muat ulang</button>
+                            </div>
+                            <div id="payment-admin-history" class="space-y-2 text-xs text-slate-300">Memuat pengajuan…</div>
+                        </section>
+
                         <!-- PUSAT PEMBAYARAN QRIS / TRANSFER + BUKTI BAYAR -->
                         <section id="payment-center" class="bg-slate-900 rounded-2xl border border-emerald-500/25 shadow-sm p-5 sm:p-6 space-y-5">
                             <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
@@ -660,7 +669,6 @@
                                 <div><label class="block text-xs text-slate-400 mb-1">Petunjuk pembayaran (opsional)</label><input id="payment-instructions" maxlength="250" placeholder="Cantumkan nama dan blok rumah" class="w-full rounded-lg bg-slate-950 border border-slate-700 p-3 text-sm text-white"></div>
                                 <div class="sm:col-span-2"><button type="submit" class="rounded-lg bg-indigo-600 hover:bg-indigo-500 px-4 py-3 text-xs font-bold text-white"><i class="fa-solid fa-floppy-disk mr-1"></i>Simpan Pengaturan</button></div>
                             </form>
-                            <div class="border-t border-slate-800 pt-4"><h4 class="text-sm font-bold text-white mb-2">Pembayaran Masuk untuk Diverifikasi</h4><div id="payment-admin-history" class="space-y-2 text-xs text-slate-300">Memuat pengajuan…</div></div>
                         </div>
                     </div>
 
@@ -5105,6 +5113,8 @@
             if (submitForm) submitForm.classList.toggle('hidden', String(currentUser.role || '').toLowerCase() !== 'warga');
             const adminPanel = document.getElementById('payment-admin-panel');
             if (adminPanel) adminPanel.classList.toggle('hidden', !admin);
+            const adminDashboardSection = document.getElementById('payment-admin-dashboard-section');
+            if (adminDashboardSection) adminDashboardSection.classList.toggle('hidden', !admin);
             try {
                 let settingsRows = [];
                 try { settingsRows = admin ? await restRequest(PAYMENT_SETTINGS_TABLE, 'id=eq.main&select=*') : await publicRestRequest(PAYMENT_SETTINGS_TABLE, 'id=eq.main&select=id,qris_image_url,bank_name,bank_account,bank_owner,instructions'); }
