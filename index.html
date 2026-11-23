@@ -90,24 +90,31 @@
             pointer-events: none;
         }
 
-        /* CSS Khusus Cetak QR Code Rumah */
+        /* Kartu QR anggota: ukuran kartu PVC standar dan cetak khusus */
+        #my-qrcode-render canvas, #my-qrcode-render img { width: 220px !important; height: 220px !important; image-rendering: pixelated; }
+        #modal-qrcode-canvas canvas, #modal-qrcode-canvas img { width: 280px !important; height: 280px !important; image-rendering: pixelated; }
+        #print-area { width: 100%; max-width: 390px; }
         @media print {
-            body * {
-                visibility: hidden;
-            }
-            #print-area, #print-area * {
-                visibility: visible;
-            }
+            @page { size: 90mm 60mm; margin: 0; }
+            html, body { width: 90mm !important; height: 60mm !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
+            body * { visibility: hidden !important; }
+            #print-area, #print-area * { visibility: visible !important; }
+            #modal-qrcode { display: block !important; position: static !important; inset: auto !important; padding: 0 !important; margin: 0 !important; background: #fff !important; }
+            #modal-qrcode > div { display: contents !important; }
             #print-area {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                margin: 0;
-                padding: 20px;
-                background: white !important;
-                color: black !important;
+                display: flex !important; position: absolute !important; left: 0 !important; top: 0 !important;
+                width: 85.6mm !important; height: 54mm !important; max-width: none !important;
+                margin: 3mm 2.2mm !important; padding: 3mm !important; gap: 3mm !important;
+                flex-direction: row !important; align-items: center !important; justify-content: flex-start !important;
+                border: .35mm solid #0f766e !important; border-radius: 2mm !important;
+                background: #fff !important; color: #111827 !important; box-shadow: none !important;
+                overflow: hidden !important;
             }
+            #print-area > div:first-child { display: none !important; }
+            #modal-qrcode-canvas { flex: 0 0 36mm !important; width: 36mm !important; height: 36mm !important; padding: 0 !important; }
+            #modal-qrcode-canvas canvas, #modal-qrcode-canvas img { display: block !important; width: 36mm !important; height: 36mm !important; }
+            #modal-qr-name { font-size: 12pt !important; line-height: 1.15 !important; margin: 0 0 2mm !important; overflow-wrap: anywhere !important; }
+            #modal-qr-info { font-size: 7pt !important; line-height: 1.3 !important; overflow-wrap: anywhere !important; }
             .no-print { display: none !important; }
         }
 
@@ -4613,8 +4620,8 @@
 
             new QRCode(container, {
                 text: buildMemberQrPayload(currentUser),
-                width: 140,
-                height: 140,
+                width: 220,
+                height: 220,
                 colorDark: "#0f172a",
                 colorLight: "#ffffff"
             });
@@ -4666,9 +4673,10 @@
             const roleLabel = getQrRoleLabel(user.role);
             const address = String(user.address || '').trim();
             const isGenericAddress = ['pengurus', 'administrator', 'admin', 'petugas', 'warga'].includes(address.toLowerCase());
-            const detailParts = [roleLabel];
+            const memberId = user.memberId ?? user.member_id ?? user.member_id_akun ?? user.member_id_status ?? user.id;
+            const detailParts = [`ID Anggota: ${memberId}`, roleLabel];
             if (address && !isGenericAddress) detailParts.push(address);
-            if (user.username) detailParts.push(`ID: ${user.username}`);
+            if (user.username && String(user.username) !== String(memberId)) detailParts.push(`Username: ${user.username}`);
             document.getElementById('modal-qr-info').innerText = detailParts.join(' | ');
 
             const canvasContainer = document.getElementById('modal-qrcode-canvas');
@@ -4676,8 +4684,8 @@
 
             new QRCode(canvasContainer, {
                 text: buildMemberQrPayload(user),
-                width: 160,
-                height: 160,
+                width: 280,
+                height: 280,
                 colorDark: "#0f172a",
                 colorLight: "#ffffff"
             });
@@ -4690,7 +4698,16 @@
         }
 
         function printSingleQrModal() {
-            window.print();
+            const modal = document.getElementById('modal-qrcode');
+            const card = document.getElementById('print-area');
+            const qr = document.getElementById('modal-qrcode-canvas');
+            if (!card || !qr || !qr.querySelector('canvas, img')) {
+                showModal('QR Code belum selesai dibuat. Tekan Perbesar, tunggu QR tampil, lalu cetak kembali.', 'QR Belum Siap');
+                return;
+            }
+            if (modal) modal.classList.remove('hidden');
+            // Beri browser satu frame untuk menyiapkan layout cetak sebelum dialog print.
+            requestAnimationFrame(() => setTimeout(() => window.print(), 180));
         }
 
         function printAllQrCodes() {
