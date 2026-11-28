@@ -303,7 +303,7 @@
                 <p id="maintenance-message" class="mt-4 border-t border-slate-800 pt-4 text-xs leading-relaxed text-slate-400">Terima kasih atas pengertian Anda.</p>
             </div>
             <p class="mt-6 text-[10px] text-slate-500">Jimpitan Digital · Kami akan segera kembali</p>
-            <button id="maintenance-developer-off" type="button" onclick="disableMaintenanceMode()" class="hidden mt-7 rounded-xl border border-emerald-500/30 bg-emerald-600 px-5 py-3 text-xs font-bold text-white hover:bg-emerald-500">Nonaktifkan Maintenance (Developer)</button>
+            <button id="maintenance-developer-off" type="button" onclick="disableMaintenanceMode()" class="hidden mt-3 rounded-xl border border-emerald-500/30 bg-emerald-600 px-5 py-3 text-xs font-bold text-white hover:bg-emerald-500">Nonaktifkan Maintenance (Developer)</button>
         </div>
     </section>
 
@@ -736,18 +736,20 @@
                         <button onclick="pindahTabAdmin('tab-manage-users')" id="btn-tab-manage-users" class="admin-tab-btn px-5 py-3 font-semibold text-xs text-indigo-400 border-b-2 border-indigo-500 cursor-pointer flex items-center whitespace-nowrap transition">
                             <i class="fa-solid fa-users-gear mr-2"></i> Akses & Status Anggota
                         </button>
-                        <button onclick="pindahTabAdmin('tab-ui-settings')" id="btn-tab-ui-settings" class="admin-tab-btn developer-only hidden px-5 py-3 font-semibold text-xs text-slate-400 hover:text-slate-200 cursor-pointer flex items-center whitespace-nowrap transition">
-                            <i class="fa-solid fa-palette mr-2"></i> Tampilan & Logo
-                        </button>
                         <button onclick="pindahTabAdmin('tab-petugas-schedule')" id="btn-tab-petugas-schedule" class="admin-tab-btn px-5 py-3 font-semibold text-xs text-slate-400 hover:text-slate-200 cursor-pointer flex items-center whitespace-nowrap transition">
                             <i class="fa-solid fa-calendar-days mr-2"></i> Jadwal Petugas
                         </button>
-
-                        <button onclick="pindahTabAdmin('tab-activity-log')" id="btn-tab-activity-log" class="admin-tab-btn px-5 py-3 font-semibold text-xs text-slate-400 hover:text-slate-200 cursor-pointer flex items-center whitespace-nowrap transition admin-only">
-                            <i class="fa-solid fa-clock-rotate-left mr-2"></i> Log Aktivitas Sistem
-                        </button>
                         <button onclick="pindahTabAdmin('tab-payment-settings')" id="btn-tab-payment-settings" class="admin-tab-btn admin-only px-5 py-3 font-semibold text-xs text-slate-400 hover:text-slate-200 cursor-pointer flex items-center whitespace-nowrap transition">
                             <i class="fa-solid fa-wallet mr-2"></i> Pengaturan Pembayaran
+                        </button>
+                        <button onclick="pindahTabAdmin('tab-ui-settings')" id="btn-tab-ui-settings" class="admin-tab-btn developer-only hidden px-5 py-3 font-semibold text-xs text-slate-400 hover:text-slate-200 cursor-pointer flex items-center whitespace-nowrap transition">
+                            <i class="fa-solid fa-palette mr-2"></i> Tampilan & Logo
+                        </button>
+                        <button onclick="pindahTabAdmin('tab-database-settings')" id="btn-tab-database-settings" class="admin-tab-btn developer-only hidden px-5 py-3 font-semibold text-xs text-slate-400 hover:text-slate-200 cursor-pointer flex items-center whitespace-nowrap transition"><i class="fa-solid fa-database mr-2"></i>Database</button>
+                        <button onclick="pindahTabAdmin('tab-backup-settings')" id="btn-tab-backup-settings" class="admin-tab-btn developer-only hidden px-5 py-3 font-semibold text-xs text-slate-400 hover:text-slate-200 cursor-pointer flex items-center whitespace-nowrap transition"><i class="fa-solid fa-box-archive mr-2"></i>Backup/Restore</button>
+                        <button onclick="pindahTabAdmin('tab-maintenance-settings')" id="btn-tab-maintenance-settings" class="admin-tab-btn developer-only hidden px-5 py-3 font-semibold text-xs text-slate-400 hover:text-slate-200 cursor-pointer flex items-center whitespace-nowrap transition"><i class="fa-solid fa-screwdriver-wrench mr-2"></i>Mode Maintenance</button>
+                        <button onclick="pindahTabAdmin('tab-activity-log')" id="btn-tab-activity-log" class="admin-tab-btn px-5 py-3 font-semibold text-xs text-slate-400 hover:text-slate-200 cursor-pointer flex items-center whitespace-nowrap transition admin-only">
+                            <i class="fa-solid fa-clock-rotate-left mr-2"></i> Log Aktivitas Sistem
                         </button>
                     </div>
 
@@ -842,21 +844,14 @@
                         </div>
                     </div>
 
-                    <!-- TAB: PENGATURAN TAMPILAN, LOGO & SUPABASE -->
+                    <!-- PANEL DEVELOPER: PENGATURAN TERPISAH -->
                     <div id="tab-ui-settings" class="admin-tab-content space-y-6 hidden">
                         <div class="bg-slate-900 rounded-3xl border border-slate-800/80 p-6 sm:p-8 shadow-xl max-w-3xl mx-auto">
                             <div class="flex items-center space-x-4 border-b border-slate-800 pb-6 mb-6">
-                                <div class="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-2xl flex items-center justify-center border border-emerald-500/20 shadow-inner">
-                                    <i class="fa-solid fa-sliders text-xl"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-xl font-bold text-white tracking-tight">Pengaturan Tampilan, Logo & Database</h3>
-                                    <p class="text-xs text-slate-400 mt-0.5">Kustomisasi skala huruf, identitas logo, serta koneksi Cloud Sync.</p>
-                                </div>
+                                <div class="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-2xl flex items-center justify-center border border-emerald-500/20 shadow-inner"><i class="fa-solid fa-palette text-xl"></i></div>
+                                <div><h3 class="text-xl font-bold text-white tracking-tight">Pengaturan Tampilan</h3><p class="text-xs text-slate-400 mt-0.5">Atur ukuran huruf, logo, dan splash screen aplikasi.</p></div>
                             </div>
-
-                            <div class="space-y-6">
-                                <div class="p-5 rounded-2xl bg-slate-950/60 border border-slate-800/80 shadow-sm space-y-2">
+                            <div class="space-y-6"><div class="p-5 rounded-2xl bg-slate-950/60 border border-slate-800/80 shadow-sm space-y-2">
                                     <label class="block text-xs font-semibold text-slate-200 uppercase tracking-wider flex items-center">
                                         <i class="fa-solid fa-text-height text-emerald-400 mr-2 text-sm"></i> Ukuran Font Tampilan Aplikasi
                                     </label>
@@ -900,9 +895,27 @@
                                             <input type="url" id="setting-splash-bg-url" placeholder="URL gambar latar splash" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200">
                                         </div>
                                     </div>
+<div class="pt-3 flex flex-col sm:flex-row gap-3">
+                                    <button onclick="saveUiSettings()" class="flex-1 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl text-xs transition shadow-lg cursor-pointer flex items-center justify-center">
+                                        <i class="fa-solid fa-floppy-disk mr-2"></i> Simpan Perubahan Tampilan
+                                    </button>
+                                    <button onclick="resetUiSettings()" class="px-5 py-3.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl text-xs transition cursor-pointer flex items-center justify-center border border-slate-700">
+                                        <i class="fa-solid fa-rotate-left mr-2"></i> Reset Default
+                                    </button>
                                 </div>
+                            </div>
+                        </div>
+                    </div></div>
+                        </div>
+                    </div>
 
-                                <!-- MODE MAINTENANCE GLOBAL -->
+                    <div id="tab-maintenance-settings" class="admin-tab-content space-y-6 hidden">
+                        <div class="bg-slate-900 rounded-3xl border border-slate-800/80 p-6 sm:p-8 shadow-xl max-w-3xl mx-auto">
+                            <div class="flex items-center space-x-4 border-b border-slate-800 pb-6 mb-6">
+                                <div class="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-2xl flex items-center justify-center border border-emerald-500/20 shadow-inner"><i class="fa-solid fa-screwdriver-wrench text-xl"></i></div>
+                                <div><h3 class="text-xl font-bold text-white tracking-tight">Mode Maintenance</h3><p class="text-xs text-slate-400 mt-0.5">Aktifkan atau nonaktifkan pembatasan akses pengguna.</p></div>
+                            </div>
+                            <div class="space-y-6"><!-- MODE MAINTENANCE GLOBAL -->
                                 <section class="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5 shadow-sm space-y-4">
                                     <div class="flex items-start gap-3">
                                         <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-300"><i class="fa-solid fa-screwdriver-wrench text-lg"></i></div>
@@ -915,9 +928,17 @@
                                     <div><label for="setting-maintenance-message" class="mb-1 block text-[11px] font-semibold text-slate-300">Pesan tambahan (opsional)</label><textarea id="setting-maintenance-message" rows="2" maxlength="300" placeholder="Contoh: Pemeliharaan sampai pukul 21.00 WIB." class="w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-xs text-white"></textarea></div>
                                     <button type="button" onclick="saveMaintenanceMode()" class="w-full rounded-xl bg-amber-600 px-4 py-3 text-xs font-bold text-white hover:bg-amber-500"><i class="fa-solid fa-floppy-disk mr-2"></i>Simpan Mode Maintenance</button>
                                     <p id="maintenance-setting-status" class="text-[10px] text-slate-500">Status akan diperiksa dari Supabase.</p>
-                                </section>
+                                </section></div>
+                        </div>
+                    </div>
 
-                                <!-- KONEKSI SUPABASE CLOUD -->
+                    <div id="tab-database-settings" class="admin-tab-content space-y-6 hidden">
+                        <div class="bg-slate-900 rounded-3xl border border-slate-800/80 p-6 sm:p-8 shadow-xl max-w-3xl mx-auto">
+                            <div class="flex items-center space-x-4 border-b border-slate-800 pb-6 mb-6">
+                                <div class="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-2xl flex items-center justify-center border border-emerald-500/20 shadow-inner"><i class="fa-solid fa-database text-xl"></i></div>
+                                <div><h3 class="text-xl font-bold text-white tracking-tight">Pengaturan Database</h3><p class="text-xs text-slate-400 mt-0.5">Kelola koneksi Supabase dan sinkronisasi cloud.</p></div>
+                            </div>
+                            <div class="space-y-6"><!-- KONEKSI SUPABASE CLOUD -->
                                 <div class="p-5 rounded-2xl bg-slate-950/60 border border-slate-800/80 shadow-sm space-y-3">
                                     <label class="block text-xs font-semibold text-slate-200 uppercase tracking-wider flex items-center justify-between">
                                         <span class="flex items-center"><i class="fa-solid fa-cloud text-brand-400 mr-2 text-sm"></i> Supabase Cloud Sync</span>
@@ -931,9 +952,17 @@
                                             <i class="fa-solid fa-cloud-arrow-down mr-1"></i> Muat Cloud & Gabungkan Data Lokal
                                         </button>
                                     </div>
-                                </div>
+                                </div></div>
+                        </div>
+                    </div>
 
-                                <!-- FITUR BACKUP & RESTORE DATA -->
+                    <div id="tab-backup-settings" class="admin-tab-content space-y-6 hidden">
+                        <div class="bg-slate-900 rounded-3xl border border-slate-800/80 p-6 sm:p-8 shadow-xl max-w-3xl mx-auto">
+                            <div class="flex items-center space-x-4 border-b border-slate-800 pb-6 mb-6">
+                                <div class="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-2xl flex items-center justify-center border border-emerald-500/20 shadow-inner"><i class="fa-solid fa-box-archive text-xl"></i></div>
+                                <div><h3 class="text-xl font-bold text-white tracking-tight">Backup & Restore</h3><p class="text-xs text-slate-400 mt-0.5">Cadangkan atau pulihkan data aplikasi dari file JSON.</p></div>
+                            </div>
+                            <div class="space-y-6"><!-- FITUR BACKUP & RESTORE DATA -->
                                 <div class="p-5 rounded-2xl bg-slate-950/60 border border-slate-800/80 shadow-sm space-y-4">
                                     <label class="block text-xs font-semibold text-slate-200 uppercase tracking-wider flex items-center">
                                         <i class="fa-solid fa-database text-emerald-400 mr-2 text-sm"></i> Backup & Restore Data Perangkat
@@ -948,17 +977,7 @@
                                             <input type="file" id="restore-file-input" accept=".json" onchange="restoreData(event)" class="hidden">
                                         </label>
                                     </div>
-                                </div>
-
-                                <div class="pt-3 flex flex-col sm:flex-row gap-3">
-                                    <button onclick="saveUiSettings()" class="flex-1 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl text-xs transition shadow-lg cursor-pointer flex items-center justify-center">
-                                        <i class="fa-solid fa-floppy-disk mr-2"></i> Simpan Perubahan Tampilan
-                                    </button>
-                                    <button onclick="resetUiSettings()" class="px-5 py-3.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl text-xs transition cursor-pointer flex items-center justify-center border border-slate-700">
-                                        <i class="fa-solid fa-rotate-left mr-2"></i> Reset Default
-                                    </button>
-                                </div>
-                            </div>
+                                </div></div>
                         </div>
                     </div>
 
@@ -1170,10 +1189,10 @@
     <!-- JAVASCRIPT UTAMA TERINTEGRASI -->
     <script>
         // Global State & User Current
-        // Developer mewarisi seluruh kemampuan operasional Admin, tetapi Admin tidak memperoleh akses teknis.
+        // Developer adalah Super Admin: mewarisi seluruh kemampuan Admin dan Petugas serta akses teknis penuh.
         function isDeveloper() { return !!currentUser && String(currentUser.role || '').toLowerCase() === 'developer'; }
         function isAdminOrDeveloper() { return !!currentUser && ['admin', 'developer'].includes(String(currentUser.role || '').toLowerCase()); }
-        // Developer memiliki gabungan hak Admin dan Petugas, termasuk scan dan pencatatan setoran.
+        // Developer memiliki hak tertinggi: gabungan seluruh hak Admin dan Petugas, termasuk scan, pencatatan setoran, pengelolaan jadwal, dan pengaturan teknis.
         function isPetugasOrDeveloper() { return !!currentUser && ['petugas', 'developer'].includes(String(currentUser.role || '').toLowerCase()); }
         function requireDeveloper(message = 'Pengaturan teknis hanya dapat diakses akun Developer.') {
             if (isDeveloper()) return true;
@@ -1700,25 +1719,33 @@
         // Dengan demikian logo/splash bisa dibaca semua peran (bahkan sebelum login),
         // tanpa memberi akses baca jimpitan_app_state kepada petugas atau warga.
         let maintenanceModeActive = false;
+        // Bypass sementara hanya untuk membuka form login Developer saat maintenance aktif.
+        let maintenanceDeveloperLoginMode = false;
         let maintenancePollTimer = null;
         let maintenancePollBusy = false;
 
         function renderMaintenanceMode(enabled, message = '') {
             maintenanceModeActive = enabled === true;
+            const developerAuthenticated = !!(currentUser && String(currentUser.role).toLowerCase() === 'developer');
+            // Maintenance membatasi anggota/admin/petugas. Developer yang sudah
+            // terautentikasi boleh memakai aplikasi secara normal untuk perbaikan.
+            // Form login juga dibuka sementara agar Developer dapat masuk.
+            const maintenanceLocked = maintenanceModeActive && !developerAuthenticated && !maintenanceDeveloperLoginMode;
             const page = document.getElementById('maintenance-page');
             const app = document.getElementById('app');
             const splash = document.getElementById('splash-screen');
             const developerButton = document.getElementById('maintenance-developer-off');
             const messageNode = document.getElementById('maintenance-message');
             if (messageNode) messageNode.textContent = String(message || 'Terima kasih atas pengertian Anda.');
-            if (developerButton) developerButton.classList.toggle('hidden', !(currentUser && String(currentUser.role).toLowerCase() === 'developer'));
+            if (developerButton) developerButton.classList.toggle('hidden', !(maintenanceModeActive && developerAuthenticated));
             if (page) {
-                page.classList.toggle('hidden', !maintenanceModeActive);
-                page.classList.toggle('flex', maintenanceModeActive);
+                page.classList.toggle('hidden', !maintenanceLocked);
+                page.classList.toggle('flex', maintenanceLocked);
             }
-            if (app) app.style.visibility = maintenanceModeActive ? 'hidden' : '';
+            if (app) app.style.visibility = maintenanceLocked ? 'hidden' : '';
+            if (app && maintenanceDeveloperLoginMode && !developerAuthenticated) app.style.visibility = '';
             if (splash && maintenanceModeActive) { splash.style.display = 'none'; splash.classList.add('hidden'); }
-            if (maintenanceModeActive) {
+            if (maintenanceLocked) {
                 document.body.style.overflow = 'hidden';
                 if (cloudPollTimer) { clearInterval(cloudPollTimer); cloudPollTimer = null; }
             } else {
@@ -1756,6 +1783,17 @@
             } finally {
                 maintenancePollBusy = false;
             }
+        }
+
+        function openMaintenanceDeveloperLogin() {
+            // Pengunjung boleh membuka form login, tetapi hanya akun ber-role developer
+            // yang lolos verifikasi profil Supabase dapat melewati halaman maintenance.
+            maintenanceDeveloperLoginMode = true;
+            renderMaintenanceMode(true, safeParseLocalStorage('jimpitan_ui_settings', {}).maintenanceMessage || 'Terima kasih atas pengertian Anda.');
+            const app = document.getElementById('app');
+            if (app) { app.classList.remove('hidden'); app.style.visibility = ''; app.style.display = 'flex'; }
+            if (typeof switchPage === 'function') switchPage('page-login');
+            document.body.style.overflow = '';
         }
 
         async function saveMaintenanceMode() {
@@ -1854,7 +1892,6 @@
         }
 
         function setCurrentStaff(authUser, profile) {
-            if (maintenanceModeActive) renderMaintenanceMode(true, safeParseLocalStorage('jimpitan_ui_settings', {}).maintenanceMessage || 'Terima kasih atas pengertian Anda.');
             currentUser = {
                 id: profile.user_id,
                 authUid: authUser.id,
@@ -1869,6 +1906,7 @@
                 lastPaidDate: null
             };
             localStorage.setItem('jimpitan_current_user', JSON.stringify(currentUser));
+            if (maintenanceModeActive) renderMaintenanceMode(true, safeParseLocalStorage('jimpitan_ui_settings', {}).maintenanceMessage || 'Terima kasih atas pengertian Anda.');
         }
 
         function replaceLocalDbFromCloud(cloudPayload) {
@@ -2770,7 +2808,7 @@
         async function handleLogin(e) {
             e.preventDefault();
             await refreshMaintenanceMode({ silent: true });
-            if (maintenanceModeActive) { renderMaintenanceMode(true); return; }
+            if (maintenanceModeActive && !maintenanceDeveloperLoginMode && !(currentUser && currentUser.role === 'developer')) { renderMaintenanceMode(true); return; }
             const userInput = document.getElementById('login-user').value.trim();
             const passInput = document.getElementById('login-pass').value;
             if (!supabaseConfig) {
@@ -2788,6 +2826,13 @@
                 });
                 storeAuthSession(sessionData);
                 const profile = await fetchAdminProfile(sessionData.user);
+                if (maintenanceModeActive && profile.role !== 'developer') {
+                    storeAuthSession(null);
+                    maintenanceDeveloperLoginMode = false;
+                    renderMaintenanceMode(true);
+                    throw new Error('Mode Maintenance sedang aktif. Hanya akun Developer yang diizinkan masuk untuk mengelola pemeliharaan.');
+                }
+                if (profile.role === 'developer') maintenanceDeveloperLoginMode = false;
                 // Peran ditentukan oleh profil yang sudah diverifikasi server, bukan pilihan di layar login.
                 if (!['developer', 'admin', 'petugas', 'warga'].includes(profile.role)) {
                     storeAuthSession(null);
@@ -2795,6 +2840,13 @@
                 }
                 loginRoleSelection = profile.role;
                 setCurrentStaff(sessionData.user, profile);
+                // Developer yang berhasil login langsung masuk ke dashboard normal.
+                // Status maintenance tetap aktif untuk pengguna lain sampai Developer
+                // menonaktifkannya dari Pengaturan Maintenance di dalam aplikasi.
+                if (profile.role === 'developer') {
+                    maintenanceDeveloperLoginMode = false;
+                    renderMaintenanceMode(maintenanceModeActive, safeParseLocalStorage('jimpitan_ui_settings', {}).maintenanceMessage || 'Terima kasih atas pengertian Anda.');
+                }
                 if (['admin', 'developer'].includes(profile.role)) {
                     // Jangan menimpa database server dengan data lokal kosong dari HP baru.
                     const cloudRow = await fetchCloudState();
@@ -3459,7 +3511,7 @@
             const isPetugas = isPetugasOrDeveloper();
             const isAdminOrPetugas = isAdmin || isPetugas;
             const myScheduleCard = document.getElementById('petugas-my-schedule-card');
-            const canViewMemberSchedule = !!currentUser && ['admin', 'petugas', 'warga'].includes(String(currentUser.role || '').toLowerCase());
+            const canViewMemberSchedule = !!currentUser && ['developer', 'admin', 'petugas', 'warga'].includes(String(currentUser.role || '').toLowerCase());
             if (myScheduleCard) myScheduleCard.classList.toggle('hidden', !canViewMemberSchedule);
             if (canViewMemberSchedule) {
                 loadMyPetugasSchedulesSafely();
@@ -4451,7 +4503,7 @@
             const card = document.getElementById('petugas-my-schedule-card');
             const list = document.getElementById('my-petugas-schedule-list');
             const role = String(currentUser?.role || '').toLowerCase();
-            if (!currentUser || !['admin', 'petugas', 'warga'].includes(role) || !supabaseAuthSession || !card || !list) return;
+            if (!currentUser || !['developer', 'admin', 'petugas', 'warga'].includes(role) || !supabaseAuthSession || !card || !list) return;
             card.classList.remove('hidden');
             try {
                 const uid = String(supabaseAuthSession.user?.id || currentUser.authUid || currentUser.id || '');
@@ -4491,17 +4543,17 @@
         function startPetugasSchedulePolling() {
             if (petugasSchedulePollTimer) clearInterval(petugasSchedulePollTimer);
             petugasSchedulePollTimer = null;
-            if (currentUser && ['admin', 'petugas', 'warga'].includes(String(currentUser.role || '').toLowerCase()) && supabaseAuthSession) {
+            if (currentUser && ['developer', 'admin', 'petugas', 'warga'].includes(String(currentUser.role || '').toLowerCase()) && supabaseAuthSession) {
                 // Segarkan kalender seluruh anggota secara berkala.
                 petugasSchedulePollTimer = setInterval(() => {
-                    if (currentUser && ['admin', 'petugas', 'warga'].includes(String(currentUser.role || '').toLowerCase()) && document.visibilityState !== 'hidden' && navigator.onLine) {
+                    if (currentUser && ['developer', 'admin', 'petugas', 'warga'].includes(String(currentUser.role || '').toLowerCase()) && document.visibilityState !== 'hidden' && navigator.onLine) {
                         loadMyPetugasSchedulesSafely();
                     }
                 }, 15000);
             }
         }
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible' && currentUser && ['admin', 'petugas', 'warga'].includes(String(currentUser.role || '').toLowerCase())) loadMyPetugasSchedulesSafely();
+            if (document.visibilityState === 'visible' && currentUser && ['developer', 'admin', 'petugas', 'warga'].includes(String(currentUser.role || '').toLowerCase())) loadMyPetugasSchedulesSafely();
         });
 
         // --- PANEL KONTROL ADMIN & PETUGAS ---
@@ -4524,8 +4576,9 @@
 
         function pindahTabAdmin(tabId) {
             if (tabId === 'tab-ui-settings' && !requireDeveloper('Menu Tampilan & Logo hanya tersedia untuk Developer.')) return;
+            if (['tab-maintenance-settings','tab-database-settings','tab-backup-settings'].includes(tabId) && !requireDeveloper('Panel ini hanya tersedia untuk Developer.')) return;
             if (tabId === 'tab-payment-settings' && !isAdminOrDeveloper()) { showModal('Pengaturan pembayaran hanya tersedia untuk Admin dan Developer.', 'Akses Ditolak'); return; }
-            if (tabId === 'tab-ui-settings') {
+            if (tabId === 'tab-ui-settings' || tabId === 'tab-maintenance-settings') {
                 const settings = safeParseLocalStorage('jimpitan_ui_settings', {});
                 const maintenanceToggle = document.getElementById('setting-maintenance-enabled');
                 const maintenanceMessage = document.getElementById('setting-maintenance-message');
@@ -5879,7 +5932,16 @@
             } catch (err) { showModal('Status pembayaran gagal diperbarui: ' + err.message, 'Verifikasi Gagal'); }
         }
         // Tanggal default pada formulir bukti bayar mengikuti tanggal lokal perangkat.
-        document.addEventListener('DOMContentLoaded', () => { const date = document.getElementById('payment-date'); if (date && !date.value) date.value = new Date().toLocaleDateString('en-CA'); });
+        document.addEventListener('DOMContentLoaded', () => {
+            const date = document.getElementById('payment-date');
+            if (date && !date.value) date.value = new Date().toLocaleDateString('en-CA');
+            // Jalur akses alternatif Developer: buka URL aplikasi dengan fragmen #developer-access.
+            // Fragmen hanya membuka form login; hak akses tetap ditentukan oleh profil Supabase.
+            if (window.location.hash === '#developer-access') {
+                openMaintenanceDeveloperLogin();
+                history.replaceState(null, '', window.location.pathname + window.location.search);
+            }
+        });
 
     </script>
 </body>
