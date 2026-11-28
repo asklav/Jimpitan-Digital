@@ -1828,16 +1828,14 @@
 
         function startMaintenancePolling() {
             if (maintenancePollTimer) clearInterval(maintenancePollTimer);
-            // Tahan tampilan login selama pemeriksaan awal agar tidak ada celah akses sesaat.
-            const page = document.getElementById('maintenance-page');
-            const app = document.getElementById('app');
-            const message = document.getElementById('maintenance-message');
-            if (page) { page.classList.remove('hidden'); page.classList.add('flex'); }
-            if (app) app.style.visibility = 'hidden';
-            if (message) message.textContent = 'Sedang memeriksa status layanan. Mohon tunggu sebentar…';
+            // Jangan tampilkan halaman maintenance saat status masih diperiksa.
+            // Halaman login tetap menjadi tampilan awal; overlay maintenance hanya
+            // ditampilkan setelah Supabase mengonfirmasi maintenanceEnabled === true.
             refreshMaintenanceMode({ silent: true });
             maintenancePollTimer = setInterval(() => {
-                if (navigator.onLine && document.visibilityState === 'visible') refreshMaintenanceMode({ silent: true });
+                if (navigator.onLine && document.visibilityState === 'visible') {
+                    refreshMaintenanceMode({ silent: true });
+                }
             }, 5000);
         }
 
