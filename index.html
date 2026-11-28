@@ -787,11 +787,14 @@
                                 <p class="text-xs text-slate-400">Atur tanggal, jam, wilayah, dan petugas yang bertugas mengambil jimpitan.</p></div>
                             </div>
                             <form id="petugas-schedule-form" onsubmit="savePetugasSchedule(event)" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div><label class="block text-xs text-slate-400 mb-1">Tanggal Pengambilan</label><input id="schedule-date" type="date" required class="w-full rounded-xl bg-slate-950 border border-slate-700 p-3 text-sm text-white"></div>
-                                <div><label class="block text-xs text-slate-400 mb-1">Petugas</label><select id="schedule-officer" required class="w-full rounded-xl bg-slate-950 border border-slate-700 p-3 text-sm text-white"><option value="">Pilih petugas</option></select></div>
+                                <div><label class="block text-xs text-slate-400 mb-1">Tanggal Mulai Pengambilan</label><input id="schedule-date" type="date" required class="w-full rounded-xl bg-slate-950 border border-slate-700 p-3 text-sm text-white"></div>
+                                <div><label class="block text-xs text-slate-400 mb-1">Petugas Awal</label><select id="schedule-officer" required class="w-full rounded-xl bg-slate-950 border border-slate-700 p-3 text-sm text-white"><option value="">Pilih petugas</option></select></div>
+                                <div><label class="block text-xs text-slate-400 mb-1">Pola Penjadwalan</label><select id="schedule-frequency" onchange="toggleScheduleRepeatFields()" class="w-full rounded-xl bg-slate-950 border border-slate-700 p-3 text-sm text-white"><option value="once">Satu kali saja</option><option value="daily">Setiap hari</option><option value="weekly:1">Satu minggu sekali</option><option value="weekly:2">Dua minggu sekali</option><option value="weekly:3">Tiga minggu sekali</option><option value="weekly:4">Empat minggu sekali</option><option value="weekly:6">Enam minggu sekali</option><option value="weekly:8">Delapan minggu sekali</option><option value="weekly:12">Dua belas minggu sekali</option><option value="monthly">Bulanan (tanggal yang sama)</option></select></div>
+                                <div id="schedule-repeat-until-wrap" class="hidden"><label class="block text-xs text-slate-400 mb-1">Jadwalkan sampai tanggal</label><input id="schedule-repeat-until" type="date" class="w-full rounded-xl bg-slate-950 border border-slate-700 p-3 text-sm text-white"><p class="text-[10px] text-slate-500 mt-1">Maksimal 1 tahun dari tanggal mulai.</p></div>
                                 <div><label class="block text-xs text-slate-400 mb-1">Jam Mulai</label><input id="schedule-start" type="time" required value="18:00" class="w-full rounded-xl bg-slate-950 border border-slate-700 p-3 text-sm text-white"></div>
                                 <div><label class="block text-xs text-slate-400 mb-1">Jam Selesai</label><input id="schedule-end" type="time" required value="20:00" class="w-full rounded-xl bg-slate-950 border border-slate-700 p-3 text-sm text-white"></div>
                                 <div class="sm:col-span-2"><label class="block text-xs text-slate-400 mb-1">Wilayah / Rute Pengambilan</label><input id="schedule-area" type="text" required maxlength="180" placeholder="Contoh: RT 03 / Blok A dan B" class="w-full rounded-xl bg-slate-950 border border-slate-700 p-3 text-sm text-white"></div>
+                                <div class="sm:col-span-2 rounded-xl border border-slate-700 bg-slate-950/70 p-3"><label class="flex items-start gap-2 text-xs text-slate-200"><input id="schedule-rolling" type="checkbox" class="mt-0.5 accent-emerald-500"><span><b>Aktifkan rolling petugas</b><span class="block text-[10px] text-slate-500 mt-1">Petugas bergiliran otomatis pada setiap tanggal jadwal, dimulai dari Petugas Awal lalu mengikuti daftar petugas aktif.</span></span></label></div>
                                 <div class="sm:col-span-2"><label class="block text-xs text-slate-400 mb-1">Catatan (opsional)</label><textarea id="schedule-notes" maxlength="500" rows="2" placeholder="Catatan pembagian tugas atau informasi warga" class="w-full rounded-xl bg-slate-950 border border-slate-700 p-3 text-sm text-white"></textarea></div>
                                 <div class="sm:col-span-2 flex flex-wrap gap-2">
                                     <button type="submit" class="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold"><i class="fa-solid fa-calendar-plus mr-1"></i> Simpan Jadwal</button>
@@ -800,8 +803,8 @@
                             </form>
                             <div class="overflow-x-auto rounded-xl border border-slate-800">
                                 <table class="w-full min-w-[720px] text-left text-xs">
-                                    <thead class="bg-slate-950 text-slate-400 uppercase"><tr><th class="p-3">Tanggal & Jam</th><th class="p-3">Petugas</th><th class="p-3">Wilayah / Rute</th><th class="p-3">Status</th><th class="p-3">Aksi</th></tr></thead>
-                                    <tbody id="admin-petugas-schedule-list" class="divide-y divide-slate-800"><tr><td colspan="5" class="p-4 text-center text-slate-500">Jadwal belum dimuat.</td></tr></tbody>
+                                    <thead class="bg-slate-950 text-slate-400 uppercase"><tr><th class="p-3">Tanggal & Jam</th><th class="p-3">Petugas</th><th class="p-3">Wilayah / Rute</th><th class="p-3">Pola</th><th class="p-3">Status</th><th class="p-3">Aksi</th></tr></thead>
+                                    <tbody id="admin-petugas-schedule-list" class="divide-y divide-slate-800"><tr><td colspan="6" class="p-4 text-center text-slate-500">Jadwal belum dimuat.</td></tr></tbody>
                                 </table>
                             </div>
                             <p class="text-[11px] text-slate-500">Jadwal hanya dapat dibuat dan diubah oleh administrator. Petugas melihat jadwal yang ditugaskan kepada akunnya.</p>
@@ -3975,13 +3978,65 @@
             }
         }
 
-        // --- JADWAL PETUGAS PENGAMBILAN JIMPITAN (Supabase table + RLS) ---
+        // --- JADWAL PETUGAS PENGAMBILAN JIMPITAN: berulang + rolling ---
         let petugasScheduleCache = [];
 
         function scheduleFormatDate(value) {
             if (!value) return '-';
             const d = new Date(String(value) + 'T00:00:00');
             return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleDateString('id-ID', {day:'2-digit', month:'long', year:'numeric'});
+        }
+
+        function scheduleLocalDate(date) {
+            const y = date.getFullYear(), m = String(date.getMonth()+1).padStart(2,'0'), d = String(date.getDate()).padStart(2,'0');
+            return `${y}-${m}-${d}`;
+        }
+
+        function toggleScheduleRepeatFields() {
+            const frequency = document.getElementById('schedule-frequency')?.value || 'once';
+            const wrap = document.getElementById('schedule-repeat-until-wrap');
+            const input = document.getElementById('schedule-repeat-until');
+            const recurring = frequency !== 'once';
+            wrap?.classList.toggle('hidden', !recurring);
+            if (input) input.required = recurring;
+            if (recurring && input && !input.value) {
+                const start = document.getElementById('schedule-date')?.value || scheduleLocalDate(new Date());
+                const d = new Date(start + 'T00:00:00'); d.setMonth(d.getMonth()+3);
+                input.value = scheduleLocalDate(d);
+            }
+        }
+
+        function schedulePatternLabel(value, rolling) {
+            const labels = {'once':'Satu kali','daily':'Harian','weekly:1':'Mingguan','weekly:2':'2 minggu sekali','weekly:3':'3 minggu sekali','weekly:4':'4 minggu sekali','weekly:6':'6 minggu sekali','weekly:8':'8 minggu sekali','weekly:12':'12 minggu sekali','monthly':'Bulanan'};
+            return (labels[value] || 'Berulang') + (rolling ? ' · Rolling' : '');
+        }
+
+        function buildScheduleDates(startValue, frequency, untilValue) {
+            const start = new Date(startValue + 'T00:00:00');
+            const until = new Date((untilValue || startValue) + 'T00:00:00');
+            if (Number.isNaN(start.getTime()) || Number.isNaN(until.getTime()) || until < start) throw new Error('Tanggal akhir harus sama atau setelah tanggal mulai.');
+            const max = new Date(start); max.setFullYear(max.getFullYear()+1);
+            if (until > max) throw new Error('Rentang penjadwalan maksimal 1 tahun.');
+            const dates = [];
+            if (frequency === 'once') return [startValue];
+            if (frequency === 'daily') {
+                for (let d = new Date(start); d <= until; d.setDate(d.getDate()+1)) dates.push(scheduleLocalDate(d));
+            } else if (frequency.startsWith('weekly:')) {
+                const weeks = Math.max(1, Math.min(12, Number(frequency.split(':')[1]) || 1));
+                for (let d = new Date(start); d <= until; d.setDate(d.getDate()+7*weeks)) dates.push(scheduleLocalDate(d));
+            } else if (frequency === 'monthly') {
+                const day = start.getDate();
+                for (let i=0; i<13; i++) {
+                    const d = new Date(start.getFullYear(), start.getMonth()+i, 1);
+                    const last = new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
+                    d.setDate(Math.min(day, last));
+                    if (d > until) break;
+                    dates.push(scheduleLocalDate(d));
+                }
+            }
+            if (!dates.length) throw new Error('Tidak ada tanggal jadwal dalam rentang tersebut.');
+            if (dates.length > 120) throw new Error('Jumlah jadwal lebih dari 120. Perpendek rentang atau pilih pola yang lebih jarang.');
+            return dates;
         }
 
         function populateScheduleOfficerSelect() {
@@ -3997,16 +4052,14 @@
                 opt.dataset.name = u.name || u.email || 'Petugas';
                 select.appendChild(opt);
             });
-            if (!officers.length) {
-                select.innerHTML = '<option value="">Belum ada akun Petugas tertaut/aktif</option>';
-            }
+            if (!officers.length) select.innerHTML = '<option value="">Belum ada akun Petugas tertaut/aktif</option>';
         }
 
         function renderAdminPetugasSchedules(rows) {
             const tbody = document.getElementById('admin-petugas-schedule-list');
             if (!tbody) return;
             if (!rows.length) {
-                tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500">Belum ada jadwal pengambilan jimpitan.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-500">Belum ada jadwal pengambilan jimpitan.</td></tr>';
                 return;
             }
             tbody.innerHTML = rows.map(row => {
@@ -4016,6 +4069,7 @@
                     <td class="p-3 whitespace-nowrap">${escapeHtml(scheduleFormatDate(row.schedule_date))}<br><span class="text-slate-500">${escapeHtml(row.start_time || '')}–${escapeHtml(row.end_time || '')}</span></td>
                     <td class="p-3">${escapeHtml(row.assigned_name || 'Petugas')}</td>
                     <td class="p-3">${escapeHtml(row.area || '-')}${row.notes ? `<div class="text-slate-500 mt-1">${escapeHtml(row.notes)}</div>` : ''}</td>
+                    <td class="p-3"><span class="text-[10px] text-cyan-300">${escapeHtml(row.recurrence_label || 'Satu kali')}</span>${row.rotation_enabled ? '<div class="text-[10px] text-emerald-300">Rolling</div>' : ''}</td>
                     <td class="p-3"><span class="rounded-full px-2 py-1 ${badgeClass}">${escapeHtml(status)}</span></td>
                     <td class="p-3"><div class="flex flex-wrap gap-1">
                         <button type="button" onclick="setPetugasScheduleStatus('${escapeHtml(row.id)}','Selesai')" class="px-2 py-1 rounded bg-emerald-700/50 text-emerald-200">Selesai</button>
@@ -4029,14 +4083,14 @@
         async function loadAdminPetugasSchedules() {
             if (!currentUser || !isAdminOrDeveloper() || !supabaseAuthSession) return;
             const tbody = document.getElementById('admin-petugas-schedule-list');
-            if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-400">Memuat jadwal dari server…</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400">Memuat jadwal dari server…</td></tr>';
             try {
-                const rows = await restRequest('jimpitan_petugas_schedule', 'select=id,assigned_user_id,assigned_name,schedule_date,start_time,end_time,area,notes,status,created_at&order=schedule_date.asc,start_time.asc');
+                const rows = await restRequest('jimpitan_petugas_schedule', 'select=id,assigned_user_id,assigned_name,schedule_date,start_time,end_time,area,notes,status,recurrence_group_id,recurrence_label,rotation_enabled,rotation_index,created_at&order=schedule_date.asc,start_time.asc');
                 petugasScheduleCache = Array.isArray(rows) ? rows : [];
                 renderAdminPetugasSchedules(petugasScheduleCache);
                 populateScheduleOfficerSelect();
             } catch (err) {
-                if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-rose-300">${escapeHtml(err.message)}<br><span class="text-slate-500">Periksa tabel dan RLS jadwal pada SQL yang disertakan.</span></td></tr>`;
+                if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-rose-300">${escapeHtml(err.message)}<br><span class="text-slate-500">Jalankan SQL tambahan jadwal berulang/rolling terlebih dahulu, lalu periksa RLS tabel.</span></td></tr>`;
             }
         }
 
@@ -4051,28 +4105,46 @@
             const end = document.getElementById('schedule-end')?.value || '';
             const area = document.getElementById('schedule-area')?.value.trim() || '';
             const notes = document.getElementById('schedule-notes')?.value.trim() || '';
+            const frequency = document.getElementById('schedule-frequency')?.value || 'once';
+            const until = document.getElementById('schedule-repeat-until')?.value || date;
+            const rolling = !!document.getElementById('schedule-rolling')?.checked;
             if (!assignedId || !date || !start || !end || end <= start || !area) {
                 showModal('Lengkapi petugas, tanggal, jam, dan wilayah. Jam selesai harus setelah jam mulai.', 'Jadwal Belum Lengkap'); return;
             }
-            const conflict = petugasScheduleCache.some(x => String(x.assigned_user_id) === assignedId && x.schedule_date === date && x.status !== 'Dibatalkan' && start < String(x.end_time || '') && end > String(x.start_time || ''));
-            if (conflict) { showModal('Petugas tersebut sudah memiliki jadwal yang bertumpang tindih pada tanggal dan jam itu.', 'Jadwal Bentrok'); return; }
-            const payload = {
-                assigned_user_id: assignedId,
-                assigned_name: selected?.dataset?.name || selected?.textContent || 'Petugas',
-                schedule_date: date, start_time: start, end_time: end,
-                area, notes, status: 'Terjadwal',
-                created_by: supabaseAuthSession?.user?.id || null
-            };
+            let dates;
+            try { dates = buildScheduleDates(date, frequency, until); }
+            catch (err) { showModal(err.message, 'Pola Jadwal Tidak Valid'); return; }
+            const officers = (db.users || []).filter(u => String(u.role || '').toLowerCase() === 'petugas' && (u.authUid || u.auth_uid));
+            const orderedOfficers = officers.map(u => ({id:String(u.authUid || u.auth_uid), name:u.name || u.email || 'Petugas'}));
+            const firstIndex = orderedOfficers.findIndex(o => o.id === assignedId);
+            if (firstIndex < 0) { showModal('Petugas awal tidak ditemukan pada daftar petugas aktif.', 'Petugas Tidak Valid'); return; }
+            const groupId = (window.crypto?.randomUUID ? window.crypto.randomUUID() : 'jadwal-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+            const label = schedulePatternLabel(frequency, rolling);
+            const payloads = dates.map((scheduleDate, index) => {
+                const officer = rolling ? orderedOfficers[(firstIndex + index) % orderedOfficers.length] : orderedOfficers[firstIndex];
+                return {
+                    assigned_user_id: officer.id, assigned_name: officer.name,
+                    schedule_date: scheduleDate, start_time: start, end_time: end,
+                    area, notes, status: 'Terjadwal', created_by: supabaseAuthSession?.user?.id || null,
+                    recurrence_group_id: groupId, recurrence_label: label,
+                    rotation_enabled: rolling, rotation_index: rolling ? index : 0
+                };
+            });
+            const conflicts = payloads.filter(item => petugasScheduleCache.some(x => String(x.assigned_user_id) === item.assigned_user_id && x.schedule_date === item.schedule_date && x.status !== 'Dibatalkan' && start < String(x.end_time || '') && end > String(x.start_time || '')));
+            if (conflicts.length) {
+                showModal(`Ada ${conflicts.length} jadwal yang bentrok. Contoh: ${scheduleFormatDate(conflicts[0].schedule_date)} dengan ${conflicts[0].assigned_name}. Tidak ada jadwal baru yang disimpan.`, 'Jadwal Bentrok'); return;
+            }
             try {
-                await restRequest('jimpitan_petugas_schedule', '', {method:'POST', headers:{'Prefer':'return=minimal'}, body:payload});
+                await restRequest('jimpitan_petugas_schedule', '', {method:'POST', headers:{'Prefer':'return=minimal'}, body:payloads});
                 document.getElementById('petugas-schedule-form')?.reset();
                 const dateInput = document.getElementById('schedule-date');
-                if (dateInput) dateInput.value = new Date().toLocaleDateString('en-CA');
+                if (dateInput) dateInput.value = scheduleLocalDate(new Date());
                 if (document.getElementById('schedule-start')) document.getElementById('schedule-start').value = '18:00';
                 if (document.getElementById('schedule-end')) document.getElementById('schedule-end').value = '20:00';
+                toggleScheduleRepeatFields();
                 await loadAdminPetugasSchedules();
-                showModal('Jadwal pengambilan jimpitan berhasil disimpan dan dapat dilihat oleh petugas yang ditugaskan.', 'Jadwal Tersimpan');
-                logActivity('Membuat jadwal pengambilan jimpitan untuk ' + payload.assigned_name + ' pada ' + date);
+                showModal(`${payloads.length} jadwal berhasil dibuat (${label}).${rolling ? ' Penugasan digilir otomatis di antara petugas aktif.' : ''}`, 'Jadwal Tersimpan');
+                logActivity('Membuat ' + payloads.length + ' jadwal pengambilan jimpitan (' + label + ') mulai ' + date);
             } catch (err) { showModal('Jadwal belum tersimpan ke server: ' + err.message, 'Gagal Menyimpan Jadwal'); }
         }
 
@@ -4150,13 +4222,13 @@
             try {
                 const uid = String(supabaseAuthSession.user?.id || currentUser.authUid || '');
                 if (!uid) throw new Error('ID akun petugas tidak ditemukan. Silakan login ulang.');
-                const rows = await restRequest('jimpitan_petugas_schedule', 'assigned_user_id=eq.' + encodeURIComponent(uid) + '&select=id,assigned_name,schedule_date,start_time,end_time,area,notes,status&order=schedule_date.asc,start_time.asc');
+                const rows = await restRequest('jimpitan_petugas_schedule', 'assigned_user_id=eq.' + encodeURIComponent(uid) + '&select=id,assigned_name,schedule_date,start_time,end_time,area,notes,status,recurrence_label,rotation_enabled&order=schedule_date.asc,start_time.asc');
                 if (!Array.isArray(rows)) throw new Error('Format jadwal dari server tidak valid.');
                 notifyPetugasScheduleChanges(rows);
                 if (!rows.length) { list.innerHTML = '<p class="text-slate-500">Belum ada jadwal yang ditugaskan kepada akun Anda.</p>'; return; }
                 list.innerHTML = rows.map(row => `<article class="rounded-xl border border-slate-800 bg-slate-950/70 p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div><p class="font-semibold text-white">${escapeHtml(scheduleFormatDate(row.schedule_date))} · ${escapeHtml(row.start_time || '')}–${escapeHtml(row.end_time || '')}</p>
-                    <p class="text-emerald-300 mt-1">${escapeHtml(row.area || '-')}</p>${row.notes ? `<p class="text-slate-500 mt-1">${escapeHtml(row.notes)}</p>` : ''}</div>
+                    <p class="text-emerald-300 mt-1">${escapeHtml(row.area || '-')}</p><p class="text-[10px] text-cyan-300 mt-1">${escapeHtml(row.recurrence_label || 'Satu kali')}</p>${row.notes ? `<p class="text-slate-500 mt-1">${escapeHtml(row.notes)}</p>` : ''}</div>
                     <span class="self-start rounded-full px-2 py-1 text-[10px] ${row.status === 'Selesai' ? 'bg-emerald-500/10 text-emerald-300' : row.status === 'Dibatalkan' ? 'bg-rose-500/10 text-rose-300' : 'bg-amber-500/10 text-amber-300'}">${escapeHtml(row.status || 'Terjadwal')}</span>
                 </article>`).join('');
             } catch (err) { list.innerHTML = `<p class="text-rose-300">${escapeHtml(err.message)}</p>`; }
