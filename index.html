@@ -3980,6 +3980,8 @@
 
         // --- JADWAL PETUGAS PENGAMBILAN JIMPITAN: berulang + rolling ---
         let petugasScheduleCache = [];
+        let myPetugasCalendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+        let myPetugasCalendarSelectedDate = scheduleLocalDate(new Date());
 
         function scheduleFormatDate(value) {
             if (!value) return '-';
@@ -3990,6 +3992,80 @@
         function scheduleLocalDate(date) {
             const y = date.getFullYear(), m = String(date.getMonth()+1).padStart(2,'0'), d = String(date.getDate()).padStart(2,'0');
             return `${y}-${m}-${d}`;
+        }
+
+        function renderPetugasScheduleCalendar(rows) {
+            const host = document.getElementById('my-petugas-schedule-list');
+            if (!host) return;
+            const month = new Date(myPetugasCalendarMonth.getFullYear(), myPetugasCalendarMonth.getMonth(), 1);
+            const year = month.getFullYear(), monthIndex = month.getMonth();
+            const monthLabel = month.toLocaleDateString('id-ID', { month:'long', year:'numeric' });
+            const firstDay = new Date(year, monthIndex, 1).getDay();
+            const mondayOffset = (firstDay + 6) % 7;
+            const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+            const today = scheduleLocalDate(new Date());
+            const byDate = new Map();
+            rows.forEach(row => {
+                const key = String(row.schedule_date || '').slice(0, 10);
+                if (!key) return;
+                if (!byDate.has(key)) byDate.set(key, []);
+                byDate.get(key).push(row);
+            });
+            const cells = [];
+            for (let i = 0; i < mondayOffset; i++) cells.push('<div class="min-h-[76px] rounded-lg bg-slate-900/40 border border-slate-800/50"></div>');
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = `${year}-${String(monthIndex + 1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+                const events = byDate.get(date) || [];
+                const selected = date === myPetugasCalendarSelectedDate;
+                const dots = events.slice(0, 3).map(row => {
+                    const color = row.status === 'Selesai' ? 'bg-emerald-400' : row.status === 'Dibatalkan' ? 'bg-rose-400' : 'bg-amber-400';
+                    return `<span class="inline-block w-1.5 h-1.5 rounded-full ${color}"></span>`;
+                }).join('');
+                cells.push(`<button type="button" onclick="selectMyPetugasCalendarDate('${date}')" class="min-w-0 min-h-[76px] p-1.5 sm:p-2 rounded-lg border text-left flex flex-col justify-between transition ${selected ? 'border-emerald-400 bg-emerald-500/15 ring-1 ring-emerald-500/30' : date === today ? 'border-cyan-500/60 bg-cyan-500/5' : 'border-slate-800 bg-slate-950/60 hover:border-slate-600'}">
+                    <span class="text-xs font-semibold ${date === today ? 'text-cyan-300' : 'text-slate-200'}">${day}</span>
+                    <span class="flex flex-wrap gap-1 min-h-2">${dots}</span>
+                    ${events.length ? `<span class="text-[9px] sm:text-[10px] leading-tight text-emerald-300">${events.length} tugas</span>` : '<span class="text-[9px] text-slate-600">—</span>'}
+                </button>`);
+            }
+            const weekdayLabels = ['Sen','Sel','Rab','Kam','Jum','Sab','Min'];
+            const selectedRows = byDate.get(myPetugasCalendarSelectedDate) || [];
+            const selectedLabel = scheduleFormatDate(myPetugasCalendarSelectedDate);
+            host.innerHTML = `<div class="space-y-3">
+                <div class="flex items-center justify-between gap-2">
+                    <button type="button" onclick="changeMyPetugasCalendarMonth(-1)" class="w-9 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200" aria-label="Bulan sebelumnya"><i class="fa-solid fa-chevron-left"></i></button>
+                    <div class="text-center min-w-0"><h4 class="font-bold text-white capitalize">${monthLabel}</h4><p class="text-[10px] text-slate-500">Pilih tanggal untuk melihat rincian tugas</p></div>
+                    <button type="button" onclick="changeMyPetugasCalendarMonth(1)" class="w-9 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200" aria-label="Bulan berikutnya"><i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+                <div class="grid grid-cols-7 gap-1 text-center">${weekdayLabels.map(day => `<div class="py-1 text-[10px] font-semibold text-slate-500">${day}</div>`).join('')}</div>
+                <div class="grid grid-cols-7 gap-1">${cells.join('')}</div>
+                <div class="flex flex-wrap items-center gap-3 text-[10px] text-slate-400"><span><i class="inline-block w-2 h-2 rounded-full bg-amber-400 mr-1"></i>Terjadwal</span><span><i class="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1"></i>Selesai</span><span><i class="inline-block w-2 h-2 rounded-full bg-rose-400 mr-1"></i>Dibatalkan</span></div>
+                <section class="rounded-xl border border-slate-800 bg-slate-950/60 p-3 space-y-2">
+                    <div class="flex items-center justify-between gap-2"><h4 class="text-xs font-bold text-white">${selectedLabel}</h4><span class="text-[10px] text-slate-500">${selectedRows.length} tugas</span></div>
+                    ${selectedRows.length ? selectedRows.map(row => `<article class="rounded-lg border border-slate-800 bg-slate-900 p-3 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                        <div class="min-w-0"><p class="text-xs font-semibold text-white"><i class="fa-regular fa-clock text-emerald-400 mr-1"></i>${escapeHtml(row.start_time || '')}–${escapeHtml(row.end_time || '')}</p>
+                        <p class="text-xs text-emerald-300 mt-1">${escapeHtml(row.area || '-')}</p>
+                        <p class="text-[10px] text-cyan-300 mt-1">${escapeHtml(row.recurrence_label || 'Satu kali')}</p>
+                        ${row.notes ? `<p class="text-[10px] text-slate-500 mt-1">${escapeHtml(row.notes)}</p>` : ''}</div>
+                        <span class="self-start rounded-full px-2 py-1 text-[10px] ${row.status === 'Selesai' ? 'bg-emerald-500/10 text-emerald-300' : row.status === 'Dibatalkan' ? 'bg-rose-500/10 text-rose-300' : 'bg-amber-500/10 text-amber-300'}">${escapeHtml(row.status || 'Terjadwal')}</span>
+                    </article>`).join('') : '<p class="text-[11px] text-slate-500 py-2">Tidak ada jadwal pada tanggal ini.</p>'}
+                </section>
+            </div>`;
+        }
+
+        function changeMyPetugasCalendarMonth(offset) {
+            myPetugasCalendarMonth = new Date(myPetugasCalendarMonth.getFullYear(), myPetugasCalendarMonth.getMonth() + offset, 1);
+            const y = myPetugasCalendarMonth.getFullYear(), m = myPetugasCalendarMonth.getMonth();
+            const lastDay = new Date(y, m + 1, 0).getDate();
+            const selected = new Date(myPetugasCalendarSelectedDate + 'T00:00:00');
+            if (selected.getFullYear() !== y || selected.getMonth() !== m) {
+                myPetugasCalendarSelectedDate = `${y}-${String(m+1).padStart(2,'0')}-${String(Math.min(selected.getDate(), lastDay)).padStart(2,'0')}`;
+            }
+            renderPetugasScheduleCalendar(petugasScheduleCache);
+        }
+
+        function selectMyPetugasCalendarDate(date) {
+            myPetugasCalendarSelectedDate = date;
+            renderPetugasScheduleCalendar(petugasScheduleCache);
         }
 
         function toggleScheduleRepeatFields() {
@@ -4225,12 +4301,18 @@
                 const rows = await restRequest('jimpitan_petugas_schedule', 'assigned_user_id=eq.' + encodeURIComponent(uid) + '&select=id,assigned_name,schedule_date,start_time,end_time,area,notes,status,recurrence_label,rotation_enabled&order=schedule_date.asc,start_time.asc');
                 if (!Array.isArray(rows)) throw new Error('Format jadwal dari server tidak valid.');
                 notifyPetugasScheduleChanges(rows);
-                if (!rows.length) { list.innerHTML = '<p class="text-slate-500">Belum ada jadwal yang ditugaskan kepada akun Anda.</p>'; return; }
-                list.innerHTML = rows.map(row => `<article class="rounded-xl border border-slate-800 bg-slate-950/70 p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <div><p class="font-semibold text-white">${escapeHtml(scheduleFormatDate(row.schedule_date))} · ${escapeHtml(row.start_time || '')}–${escapeHtml(row.end_time || '')}</p>
-                    <p class="text-emerald-300 mt-1">${escapeHtml(row.area || '-')}</p><p class="text-[10px] text-cyan-300 mt-1">${escapeHtml(row.recurrence_label || 'Satu kali')}</p>${row.notes ? `<p class="text-slate-500 mt-1">${escapeHtml(row.notes)}</p>` : ''}</div>
-                    <span class="self-start rounded-full px-2 py-1 text-[10px] ${row.status === 'Selesai' ? 'bg-emerald-500/10 text-emerald-300' : row.status === 'Dibatalkan' ? 'bg-rose-500/10 text-rose-300' : 'bg-amber-500/10 text-amber-300'}">${escapeHtml(row.status || 'Terjadwal')}</span>
-                </article>`).join('');
+                petugasScheduleCache = rows;
+                if (!rows.length) {
+                    list.innerHTML = '<p class="text-slate-500 text-[11px]">Belum ada jadwal yang ditugaskan kepada akun Anda.</p>';
+                    return;
+                }
+                const today = scheduleLocalDate(new Date());
+                if (!rows.some(row => String(row.schedule_date || '').slice(0,10) === myPetugasCalendarSelectedDate)) {
+                    myPetugasCalendarSelectedDate = rows.some(row => String(row.schedule_date || '').slice(0,10) === today) ? today : String(rows[0].schedule_date).slice(0,10);
+                }
+                const selected = new Date(myPetugasCalendarSelectedDate + 'T00:00:00');
+                myPetugasCalendarMonth = new Date(selected.getFullYear(), selected.getMonth(), 1);
+                renderPetugasScheduleCalendar(rows);
             } catch (err) { list.innerHTML = `<p class="text-rose-300">${escapeHtml(err.message)}</p>`; }
         }
 
