@@ -512,7 +512,7 @@
 
                         <section id="petugas-my-schedule-card" class="hidden bg-slate-900 rounded-2xl border border-emerald-500/25 p-5 shadow-sm space-y-3">
                             <div class="flex items-center justify-between gap-3">
-                                <div><h3 class="text-sm font-bold text-white"><i class="fa-solid fa-calendar-check text-emerald-400 mr-2"></i>Jadwal Pengambilan Jimpitan Saya</h3><p class="text-[11px] text-slate-400 mt-1">Jadwal tugas yang ditetapkan administrator.</p></div>
+                                <div><h3 class="text-sm font-bold text-white"><i class="fa-solid fa-calendar-days text-emerald-400 mr-2"></i>Jadwal Pengambilan Jimpitan Petugas</h3><p class="text-[11px] text-slate-400 mt-1">Kalender jadwal seluruh petugas yang dapat dilihat semua anggota.</p></div>
                                 <button onclick="loadMyPetugasSchedules()" class="text-xs text-emerald-300 underline">Muat ulang</button>
                             </div>
                             <div id="my-petugas-schedule-list" class="space-y-2 text-xs text-slate-300">Memuat jadwal…</div>
@@ -3303,8 +3303,9 @@
             const isPetugas = isPetugasOrDeveloper();
             const isAdminOrPetugas = isAdmin || isPetugas;
             const myScheduleCard = document.getElementById('petugas-my-schedule-card');
-            if (myScheduleCard) myScheduleCard.classList.toggle('hidden', !isPetugas);
-            if (isPetugas) {
+            const canViewMemberSchedule = !!currentUser && ['admin', 'petugas', 'warga'].includes(String(currentUser.role || '').toLowerCase());
+            if (myScheduleCard) myScheduleCard.classList.toggle('hidden', !canViewMemberSchedule);
+            if (canViewMemberSchedule) {
                 loadMyPetugasSchedulesSafely();
                 startPetugasSchedulePolling();
             } else if (petugasSchedulePollTimer) {
@@ -4042,8 +4043,8 @@
                 <section class="rounded-xl border border-slate-800 bg-slate-950/60 p-3 space-y-2">
                     <div class="flex items-center justify-between gap-2"><h4 class="text-xs font-bold text-white">${selectedLabel}</h4><span class="text-[10px] text-slate-500">${selectedRows.length} tugas</span></div>
                     ${selectedRows.length ? selectedRows.map(row => `<article class="rounded-lg border border-slate-800 bg-slate-900 p-3 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-                        <div class="min-w-0"><p class="text-xs font-semibold text-white"><i class="fa-regular fa-clock text-emerald-400 mr-1"></i>${escapeHtml(row.start_time || '')}–${escapeHtml(row.end_time || '')}</p>
-                        <p class="text-xs text-emerald-300 mt-1">${escapeHtml(row.area || '-')}</p>
+                        <div class="min-w-0"><p class="text-xs font-semibold text-emerald-300">${escapeHtml(row.area || '-')}</p>
+                        <p class="text-[10px] text-sky-300 mt-1"><i class="fa-solid fa-user-check mr-1"></i>Petugas: ${escapeHtml(row.assigned_name || 'Belum ditentukan')}</p>
                         <p class="text-[10px] text-cyan-300 mt-1">${escapeHtml(row.recurrence_label || 'Satu kali')}</p>
                         ${row.notes ? `<p class="text-[10px] text-slate-500 mt-1">${escapeHtml(row.notes)}</p>` : ''}</div>
                         <span class="self-start rounded-full px-2 py-1 text-[10px] ${row.status === 'Selesai' ? 'bg-emerald-500/10 text-emerald-300' : row.status === 'Dibatalkan' ? 'bg-rose-500/10 text-rose-300' : 'bg-amber-500/10 text-amber-300'}">${escapeHtml(row.status || 'Terjadwal')}</span>
@@ -4293,17 +4294,22 @@
         async function loadMyPetugasSchedules() {
             const card = document.getElementById('petugas-my-schedule-card');
             const list = document.getElementById('my-petugas-schedule-list');
-            if (!isPetugasOrDeveloper() || !supabaseAuthSession || !card || !list) return;
+            const role = String(currentUser?.role || '').toLowerCase();
+            if (!currentUser || !['admin', 'petugas', 'warga'].includes(role) || !supabaseAuthSession || !card || !list) return;
             card.classList.remove('hidden');
             try {
-                const uid = String(supabaseAuthSession.user?.id || currentUser.authUid || '');
-                if (!uid) throw new Error('ID akun petugas tidak ditemukan. Silakan login ulang.');
-                const rows = await restRequest('jimpitan_petugas_schedule', 'assigned_user_id=eq.' + encodeURIComponent(uid) + '&select=id,assigned_name,schedule_date,start_time,end_time,area,notes,status,recurrence_label,rotation_enabled&order=schedule_date.asc,start_time.asc');
+                const uid = String(supabaseAuthSession.user?.id || currentUser.authUid || currentUser.id || '');
+                const rows = await restRequest('jimpitan_petugas_schedule', 'select=id,assigned_user_id,assigned_name,schedule_date,start_time,end_time,area,notes,status,recurrence_label,rotation_enabled&order=schedule_date.asc,start_time.asc');
                 if (!Array.isArray(rows)) throw new Error('Format jadwal dari server tidak valid.');
-                notifyPetugasScheduleChanges(rows);
+
+                // Kalender menampilkan seluruh jadwal untuk semua anggota.
+                // Notifikasi perubahan tetap dibatasi pada petugas yang menerima penugasan.
+                if (role === 'petugas' && uid) {
+                    notifyPetugasScheduleChanges(rows.filter(row => String(row.assigned_user_id || '') === uid));
+                }
                 petugasScheduleCache = rows;
                 if (!rows.length) {
-                    list.innerHTML = '<p class="text-slate-500 text-[11px]">Belum ada jadwal yang ditugaskan kepada akun Anda.</p>';
+                    list.innerHTML = '<p class="text-slate-500 text-[11px]">Belum ada jadwal pengambilan jimpitan yang dibuat administrator.</p>';
                     return;
                 }
                 const today = scheduleLocalDate(new Date());
@@ -4313,7 +4319,9 @@
                 const selected = new Date(myPetugasCalendarSelectedDate + 'T00:00:00');
                 myPetugasCalendarMonth = new Date(selected.getFullYear(), selected.getMonth(), 1);
                 renderPetugasScheduleCalendar(rows);
-            } catch (err) { list.innerHTML = `<p class="text-rose-300">${escapeHtml(err.message)}</p>`; }
+            } catch (err) {
+                list.innerHTML = `<p class="text-rose-300">${escapeHtml(err.message)}<br><span class="text-[10px] text-slate-500">Pastikan kebijakan database mengizinkan anggota yang sudah login membaca jadwal petugas.</span></p>`;
+            }
         }
 
         let petugasSchedulePollTimer = null;
@@ -4327,17 +4335,17 @@
         function startPetugasSchedulePolling() {
             if (petugasSchedulePollTimer) clearInterval(petugasSchedulePollTimer);
             petugasSchedulePollTimer = null;
-            if (isPetugasOrDeveloper() && supabaseAuthSession) {
-                // Cek jadwal lebih rapat; hanya mengambil baris yang ditugaskan ke akun ini.
+            if (currentUser && ['admin', 'petugas', 'warga'].includes(String(currentUser.role || '').toLowerCase()) && supabaseAuthSession) {
+                // Segarkan kalender seluruh anggota secara berkala.
                 petugasSchedulePollTimer = setInterval(() => {
-                    if (isPetugasOrDeveloper() && document.visibilityState !== 'hidden' && navigator.onLine) {
+                    if (currentUser && ['admin', 'petugas', 'warga'].includes(String(currentUser.role || '').toLowerCase()) && document.visibilityState !== 'hidden' && navigator.onLine) {
                         loadMyPetugasSchedulesSafely();
                     }
-                }, 5000);
+                }, 15000);
             }
         }
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible' && isPetugasOrDeveloper()) loadMyPetugasSchedulesSafely();
+            if (document.visibilityState === 'visible' && currentUser && ['admin', 'petugas', 'warga'].includes(String(currentUser.role || '').toLowerCase())) loadMyPetugasSchedulesSafely();
         });
 
         // --- PANEL KONTROL ADMIN & PETUGAS ---
