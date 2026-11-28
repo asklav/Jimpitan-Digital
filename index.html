@@ -5026,8 +5026,13 @@
         }
 
         function enlargeMyQrCode() {
-            if (!currentUser) return;
-            showModalQr(currentUser.id);
+            if (!currentUser) {
+                showModal('Data akun belum tersedia. Silakan masuk kembali.', 'QR Code Tidak Tersedia');
+                return;
+            }
+            // Gunakan objek akun aktif sebagai fallback; ID sesi Supabase kadang
+            // tidak sama dengan ID baris pada daftar anggota lokal.
+            showModalQr(currentUser.id, currentUser);
         }
 
         function downloadMyQrCode(format = 'png') {
@@ -5064,21 +5069,33 @@
 
         function printMyQrCode() {
             if (!currentUser) return;
-            showModalQr(currentUser.id);
+            showModalQr(currentUser.id, currentUser);
             setTimeout(() => { printSingleQrModal(); }, 300);
         }
 
-        function showModalQr(userId) {
+        function showModalQr(userId, fallbackUser = null) {
             if (!currentUser) return;
             const role = String(currentUser.role || '').toLowerCase();
-            if (!['admin', 'petugas'].includes(role) && String(currentUser.id) !== String(userId)) {
+            if (!['admin', 'petugas', 'developer'].includes(role) && String(currentUser.id) !== String(userId)) {
                 showModal('Warga hanya dapat melihat QR Code miliknya sendiri.', 'Akses Ditolak');
                 return;
             }
-            const user = db.users.find(u => String(u.id) === String(userId));
-            if (!user) return;
+            const user = (Array.isArray(db.users) ? db.users : []).find(u =>
+                String(u.id) === String(userId) ||
+                (fallbackUser && u.memberId != null && String(u.memberId) === String(fallbackUser.memberId ?? fallbackUser.member_id))
+            ) || fallbackUser || (
+                String(currentUser.id) === String(userId) ? currentUser : null
+            );
+            if (!user) {
+                showModal('Data anggota tidak ditemukan. Muat ulang data anggota, lalu coba kembali.', 'QR Code Tidak Tersedia');
+                return;
+            }
+            if (typeof QRCode === 'undefined') {
+                showModal('Komponen pembuat QR belum termuat. Periksa koneksi internet lalu coba kembali.', 'QR Code Belum Siap');
+                return;
+            }
 
-            document.getElementById('modal-qr-name').innerText = user.name;
+            document.getElementById('modal-qr-name').innerText = user.name || user.display_name || 'Anggota';
             const roleLabel = getQrRoleLabel(user.role);
             const address = String(user.address || '').trim();
             const isGenericAddress = ['pengurus', 'administrator', 'admin', 'petugas', 'warga'].includes(address.toLowerCase());
