@@ -90,10 +90,18 @@
             pointer-events: none;
         }
 
-        /* Kartu QR anggota: ukuran kartu PVC standar dan cetak khusus */
-        #my-qrcode-render canvas, #my-qrcode-render img { width: 220px !important; height: 220px !important; image-rendering: pixelated; }
-        #modal-qrcode-canvas canvas, #modal-qrcode-canvas img { width: 280px !important; height: 280px !important; image-rendering: pixelated; }
+        /* QR responsif: mengikuti ruang layar PC/ponsel tanpa mengubah isi kode */
+        #my-qrcode-render { width: clamp(180px, 34vw, 300px); height: clamp(180px, 34vw, 300px); display:flex; align-items:center; justify-content:center; }
+        #my-qrcode-render canvas, #my-qrcode-render img { width: 100% !important; height: 100% !important; image-rendering: pixelated; }
+        #modal-qrcode-canvas { width: min(72vw,  min(420px, 48vh)); height: min(72vw, min(420px, 48vh)); display:flex; align-items:center; justify-content:center; }
+        #modal-qrcode-canvas canvas, #modal-qrcode-canvas img { width: 100% !important; height: 100% !important; image-rendering: pixelated; }
         #print-area { width: 100%; max-width: 390px; }
+        @media (max-width: 767px) {
+            #my-qrcode-container { padding: 1rem; }
+            #my-qrcode-render { width: min(68vw, 280px); height: min(68vw, 280px); }
+            #modal-qrcode { padding: .5rem !important; overflow-y: auto; }
+            #modal-qrcode > div { max-height: calc(100dvh - 1rem); overflow-y: auto; padding: 1rem; }
+        }
         @media print {
             @page { size: 90mm 60mm; margin: 0; }
             html, body { width: 90mm !important; height: 60mm !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
@@ -211,6 +219,36 @@
             <button onclick="closeModal()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-xl transition shadow-md text-xs cursor-pointer">
                 Mengerti
             </button>
+        </div>
+    </div>
+
+    <!-- Modal khusus perubahan role anggota: tidak mengedit identitas, ID, nominal, atau status iuran. -->
+    <div id="member-role-modal" class="hidden fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm items-center justify-center p-4">
+        <div class="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
+            <div class="flex items-start justify-between gap-3 mb-5">
+                <div>
+                    <h3 class="text-lg font-bold text-white">Edit Role Anggota</h3>
+                    <p class="mt-1 text-xs text-slate-400">Hanya role dan hak akses yang akan diubah.</p>
+                </div>
+                <button type="button" onclick="closeMemberRoleEditor()" class="text-slate-400 hover:text-white" aria-label="Tutup"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <input type="hidden" id="member-role-user-id">
+            <div class="mb-4 rounded-xl border border-slate-800 bg-slate-950/70 p-3">
+                <div class="text-[10px] uppercase tracking-wider text-slate-500">Anggota</div>
+                <div id="member-role-name" class="mt-1 text-sm font-semibold text-white"></div>
+                <div id="member-role-member-id" class="mt-1 break-all font-mono text-[11px] text-slate-400"></div>
+            </div>
+            <label for="member-role-select" class="mb-2 block text-xs font-semibold text-slate-300">Role baru</label>
+            <select id="member-role-select" class="w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-white">
+                <option value="admin">Admin</option>
+                <option value="petugas">Petugas</option>
+                <option value="warga">Warga</option>
+            </select>
+            <p class="mt-3 text-[11px] leading-relaxed text-amber-300">ID anggota, data anggota, kewajiban iuran, dan seluruh transaksi/riwayat setoran tetap dipertahankan.</p>
+            <div class="mt-5 flex gap-2">
+                <button type="button" onclick="closeMemberRoleEditor()" class="flex-1 rounded-xl bg-slate-800 px-4 py-3 text-xs font-semibold text-slate-200 hover:bg-slate-700">Batal</button>
+                <button id="member-role-save" type="button" onclick="saveMemberRole()" class="flex-1 rounded-xl bg-indigo-600 px-4 py-3 text-xs font-bold text-white hover:bg-indigo-500">Simpan Role</button>
+            </div>
         </div>
     </div>
 
@@ -437,7 +475,8 @@
                                 <p id="my-qrcode-description" class="text-xs text-slate-400 max-w-md">Tunjukkan QR Code ini untuk identifikasi akun Anda di Jimpitan Digital.</p>
                                 <div class="pt-2 flex flex-wrap gap-2 justify-center md:justify-start">
                                     <button onclick="enlargeMyQrCode()" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold"><i class="fa-solid fa-expand mr-1"></i> Perbesar</button>
-                                    <button onclick="downloadMyQrCode()" class="px-3 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-semibold"><i class="fa-solid fa-download mr-1"></i> Unduh QR</button>
+                                    <button onclick="downloadMyQrCode('png')" class="px-3 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-semibold"><i class="fa-solid fa-image mr-1"></i> Unduh PNG</button>
+                                    <button onclick="downloadMyQrCode('pdf')" class="px-3 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold"><i class="fa-solid fa-file-pdf mr-1"></i> Unduh PDF</button>
                                     <button onclick="printMyQrCode()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold"><i class="fa-solid fa-print mr-1"></i> Cetak QR</button>
                                 </div>
                             </div>
@@ -681,19 +720,16 @@
                                         <i class="fa-solid fa-shield-halved text-xl"></i>
                                     </div>
                                     <div>
-                                        <h3 class="text-xl font-bold text-white tracking-tight">Manajemen Akses, Status & QR Code Anggota</h3>
-                                        <p class="text-xs text-slate-400 mt-0.5">Admin mengelola QR anggota; Admin dan Petugas dapat menampilkan/mencetak QR untuk pencatatan. Warga hanya melihat QR miliknya sendiri.</p>
+                                        <h3 class="text-xl font-bold text-white tracking-tight">Kelola Anggota</h3>
+                                        <p class="text-xs text-slate-400 mt-0.5">Daftar anggota aktif dari database. Developer dan Admin dapat mengubah role tanpa mengubah ID anggota, status iuran, atau riwayat transaksi.</p>
                                     </div>
                                 </div>
                                 <div class="flex flex-wrap gap-2.5 w-full lg:w-auto justify-end">
+                                    <button onclick="loadRoleManagementMembers()" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow transition flex items-center justify-center cursor-pointer admin-only">
+                                        <i class="fa-solid fa-rotate mr-1.5"></i> Muat Ulang Anggota
+                                    </button>
                                     <button onclick="printAllQrCodes()" class="px-4 py-2.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-semibold shadow transition flex items-center justify-center cursor-pointer">
                                         <i class="fa-solid fa-print mr-1.5"></i> Cetak Semua QR Code
-                                    </button>
-                                    <button onclick="handleAllResetStatus()" class="px-4 py-2.5 bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 border border-amber-500/30 rounded-xl text-xs font-semibold shadow transition flex items-center justify-center cursor-pointer admin-only">
-                                        <i class="fa-solid fa-rotate mr-1.5"></i> All Reset Status Iuran
-                                    </button>
-                                    <button onclick="openModalUser()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-md transition flex items-center justify-center cursor-pointer admin-only">
-                                        <i class="fa-solid fa-user-plus mr-1.5"></i> Tambah Anggota
                                     </button>
                                 </div>
                             </div>
@@ -703,13 +739,13 @@
                                     <thead>
                                         <tr class="bg-slate-950 text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-800">
                                             <th class="p-4">Nama Lengkap</th>
-                                            <th class="p-4">Username / ID</th>
+                                            <th class="p-4">ID Anggota / Email</th>
                                             <th class="p-4">Blok / Rumah</th>
                                             <th class="p-4">Nominal / Hari</th>
                                             <th class="p-4">Akses (Role)</th>
                                             <th class="p-4">Status Iuran Hari Ini</th>
                                             <th class="p-4 text-center">QR Code</th>
-                                            <th id="th-user-action-header" class="p-4 text-center admin-only">Aksi / Pengaturan</th>
+                                            <th id="th-user-action-header" class="p-4 text-center admin-only">Aksi / Edit Role</th>
                                         </tr>
                                     </thead>
                                     <tbody id="table-users-body" class="divide-y divide-slate-800/50"></tbody>
@@ -4147,6 +4183,7 @@
         function pindahTabAdmin(tabId) {
             if (tabId === 'tab-ui-settings' && !requireDeveloper('Menu Tampilan & Logo hanya tersedia untuk Developer.')) return;
             if (tabId === 'tab-payment-settings' && !isAdminOrDeveloper()) { showModal('Pengaturan pembayaran hanya tersedia untuk Admin dan Developer.', 'Akses Ditolak'); return; }
+            if (tabId === 'tab-manage-users') loadRoleManagementMembers();
             document.querySelectorAll('.admin-tab-content').forEach(el => el.classList.add('hidden'));
             document.querySelectorAll('.admin-tab-btn').forEach(btn => {
                 btn.classList.remove('text-indigo-400', 'border-b-2', 'border-indigo-500');
@@ -4164,6 +4201,118 @@
             if(activeBtn) {
                 activeBtn.classList.remove('text-slate-400');
                 activeBtn.classList.add('text-indigo-400', 'border-b-2', 'border-indigo-500');
+            }
+        }
+
+        // Muat ulang direktori anggota dari profil server, bukan dari formulir pendaftaran.
+        async function loadRoleManagementMembers() {
+            if (!isAdminOrDeveloper()) {
+                showModal('Menu Kelola Anggota hanya dapat diakses Developer dan Admin.', 'Akses Ditolak');
+                return;
+            }
+            if (!supabaseConfig || !supabaseAuthSession) {
+                showModal('Sesi database belum tersedia. Login ulang sebagai Developer atau Admin.', 'Database Belum Siap');
+                return;
+            }
+            const tbody = document.getElementById('table-users-body');
+            if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="p-5 text-center text-slate-400">Memuat anggota dari database…</td></tr>';
+            try {
+                await syncRegisteredProfilesToMembers();
+                await refreshWargaStatusFromSupabase();
+                renderUserTable();
+            } catch (err) {
+                console.error('Gagal memuat Kelola Anggota:', err);
+                if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="p-5 text-center text-rose-300">Gagal memuat anggota dari database: ' + escapeHtml(err.message || err) + '</td></tr>';
+                showModal('Daftar anggota gagal dimuat dari database: ' + (err.message || err), 'Gagal Memuat Anggota');
+            }
+        }
+
+        function openMemberRoleEditor(userId) {
+            if (!isAdminOrDeveloper()) {
+                showModal('Hanya Developer dan Admin yang boleh mengubah role anggota.', 'Akses Ditolak');
+                return;
+            }
+            const user = db.users.find(item => String(item.id) === String(userId));
+            if (!user) {
+                showModal('Anggota tidak ditemukan. Muat ulang daftar anggota dari database.', 'Anggota Tidak Ditemukan');
+                return;
+            }
+            if (String(user.role || '').toLowerCase() === 'developer') {
+                showModal('Role akun Developer dilindungi dan tidak dapat diubah melalui Kelola Anggota.', 'Aksi Ditolak');
+                return;
+            }
+            const authUserId = user.authUid || user.auth_uid;
+            if (!authUserId) {
+                showModal('Akun ini belum terhubung dengan profil akun database (user_id). Role tidak dapat diubah secara lokal saja.', 'Profil Database Tidak Ditemukan');
+                return;
+            }
+            document.getElementById('member-role-user-id').value = String(authUserId);
+            document.getElementById('member-role-name').textContent = user.name || user.email || 'Anggota';
+            document.getElementById('member-role-member-id').textContent = 'ID Anggota: ' + String(user.memberId || user.member_id || 'Belum tersedia');
+            document.getElementById('member-role-select').value = ['admin', 'petugas', 'warga'].includes(String(user.role || '').toLowerCase())
+                ? String(user.role).toLowerCase() : 'warga';
+            const modal = document.getElementById('member-role-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeMemberRoleEditor() {
+            const modal = document.getElementById('member-role-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        async function saveMemberRole() {
+            if (!isAdminOrDeveloper()) {
+                showModal('Akses ditolak. Hanya Developer dan Admin yang boleh mengubah role.', 'Akses Ditolak');
+                return;
+            }
+            const targetUserId = String(document.getElementById('member-role-user-id').value || '').trim();
+            const newRole = String(document.getElementById('member-role-select').value || '').toLowerCase();
+            if (!targetUserId || !['admin', 'petugas', 'warga'].includes(newRole)) {
+                showModal('Profil anggota atau pilihan role tidak valid.', 'Data Tidak Valid');
+                return;
+            }
+            const target = db.users.find(item => String(item.authUid || item.auth_uid || '') === targetUserId);
+            if (!target) {
+                showModal('Profil anggota tidak ditemukan pada daftar aktif. Muat ulang daftar anggota.', 'Anggota Tidak Ditemukan');
+                return;
+            }
+            if (String(target.role || '').toLowerCase() === 'developer') {
+                showModal('Role Developer dilindungi.', 'Aksi Ditolak');
+                return;
+            }
+            if (String(target.role || '').toLowerCase() === newRole) {
+                closeMemberRoleEditor();
+                showModal('Role anggota sudah sesuai. Tidak ada perubahan yang diperlukan.', 'Tidak Ada Perubahan');
+                return;
+            }
+            if (!supabaseConfig || !supabaseAuthSession || !navigator.onLine) {
+                showModal('Perubahan role memerlukan koneksi database dan internet aktif.', 'Database Tidak Terhubung');
+                return;
+            }
+            const button = document.getElementById('member-role-save');
+            const previousRole = String(target.role || 'warga');
+            button.disabled = true;
+            button.textContent = 'Menyimpan…';
+            try {
+                // RPC memeriksa role pemanggil di sisi database. Browser tidak menulis role secara lokal.
+                const result = await restRequest('rpc/update_jimpitan_member_role', '', {
+                    method: 'POST',
+                    body: { p_target_user_id: targetUserId, p_new_role: newRole }
+                });
+                const outcome = Array.isArray(result) ? result[0] : result;
+                if (outcome && outcome.success === false) throw new Error(outcome.message || 'Database menolak perubahan role.');
+                closeMemberRoleEditor();
+                await loadRoleManagementMembers();
+                logActivity('Perubahan role anggota ' + (target.name || target.email || targetUserId) + ': ' + previousRole + ' → ' + newRole);
+                showModal('Role anggota berhasil diubah dari ' + previousRole.toUpperCase() + ' menjadi ' + newRole.toUpperCase() + '. ID anggota dan data transaksi tidak diubah.', 'Role Berhasil Diperbarui');
+            } catch (err) {
+                console.error('Perubahan role gagal:', err);
+                showModal('Perubahan role gagal disimpan oleh database: ' + (err.message || err) + '. Pastikan fungsi SQL update_jimpitan_member_role sudah dipasang dan izin server aktif.', 'Gagal Mengubah Role');
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Simpan Role';
             }
         }
 
@@ -4187,10 +4336,8 @@
                 let actionTd = '';
                 if (isAdmin && String(u.role || '').toLowerCase() !== 'developer') {
                     actionTd = `
-                        <td class="p-4 text-center space-x-2">
-                            <button onclick="toggleUserStatus(${Number(u.id)})" class="px-2.5 py-1 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 cursor-pointer" title="Toggle Status">Reset/Setor</button>
-                            <button onclick="openModalUser(${Number(u.id)})" class="text-indigo-400 hover:text-indigo-300 p-1 cursor-pointer" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
-                            ${String(u.id) !== String(currentUser.id) ? `<button onclick="deleteUser(decodeURIComponent('${encodeURIComponent(String(u.id))}'))" class="text-rose-400 hover:text-rose-300 p-1 cursor-pointer" title="Hapus"><i class="fa-solid fa-trash-can"></i></button>` : ''}
+                        <td class="p-4 text-center">
+                            <button onclick="openMemberRoleEditor(decodeURIComponent('${encodeURIComponent(String(u.id))}'))" class="inline-flex items-center gap-1 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-2 text-[10px] font-semibold text-indigo-300 hover:bg-indigo-500/20 cursor-pointer" title="Edit Role"><i class="fa-solid fa-user-pen"></i><span>Edit</span></button>
                         </td>
                     `;
                 } else {
@@ -4199,7 +4346,7 @@
 
                 tr.innerHTML = `
                     <td class="p-4 font-semibold text-white">${escapeHtml(u.name)}</td>
-                    <td class="p-4 text-slate-400 font-mono text-xs">${escapeHtml(u.username)}</td>
+                    <td class="p-4 text-slate-300"><div class="font-mono text-[11px]">${escapeHtml(u.memberId || u.member_id || "—")}</div><div class="mt-1 text-[10px] text-slate-500">${escapeHtml(u.email || u.username || "")}</div></td>
                     <td class="p-4 text-slate-300">${escapeHtml(u.address)}</td>
                     <td class="p-4 text-emerald-400 font-bold">Rp ${(u.dailyNominal || 2000).toLocaleString('id-ID')}</td>
                     <td class="p-4">${roleBadge}</td>
@@ -4883,13 +5030,33 @@
             showModalQr(currentUser.id);
         }
 
-        function downloadMyQrCode() {
+        function downloadMyQrCode(format = 'png') {
             if (!currentUser) return;
             const dataUrl = getMyQrDataUrl();
-            if (!dataUrl) { showModal('QR Code belum siap. Muat ulang dashboard lalu coba lagi.', 'QR Belum Siap'); return; }
+            if (!dataUrl) { showModal('QR Code belum siap. Tunggu sampai kode tampil, lalu coba lagi.', 'QR Belum Siap'); return; }
+            const safeName = `QR-${String(currentUser.role || 'anggota').toUpperCase()}-${String(currentUser.username || currentUser.id).replace(/[^a-z0-9_-]/gi, '-')}`;
+            if (String(format).toLowerCase() === 'pdf') {
+                if (!window.jspdf || !window.jspdf.jsPDF) {
+                    showModal('Fitur PDF belum termuat. Periksa koneksi internet lalu coba lagi.', 'PDF Belum Siap');
+                    return;
+                }
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [90, 110] });
+                doc.setTextColor(4, 120, 87);
+                doc.setFontSize(11);
+                doc.text('JIMPITAN DIGITAL', 45, 10, { align: 'center' });
+                doc.addImage(dataUrl, 'PNG', 15, 17, 60, 60);
+                doc.setTextColor(15, 23, 42);
+                doc.setFontSize(12);
+                doc.text(String(currentUser.name || 'Anggota'), 45, 84, { align: 'center', maxWidth: 78 });
+                doc.setFontSize(8);
+                doc.text(`ID Anggota: ${String(currentUser.memberId ?? currentUser.member_id ?? currentUser.id)}`, 45, 91, { align: 'center', maxWidth: 82 });
+                doc.save(`${safeName}.pdf`);
+                return;
+            }
             const link = document.createElement('a');
             link.href = dataUrl;
-            link.download = `QR-${String(currentUser.role || 'anggota').toUpperCase()}-${String(currentUser.username || currentUser.id).replace(/[^a-z0-9_-]/gi, '-')}.png`;
+            link.download = `${safeName}.png`;
             document.body.appendChild(link);
             link.click();
             link.remove();
@@ -4932,11 +5099,15 @@
                 colorLight: "#ffffff"
             });
 
-            document.getElementById('modal-qrcode').classList.remove('hidden');
+            const modal = document.getElementById('modal-qrcode');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
         }
 
         function closeModalQr() {
-            document.getElementById('modal-qrcode').classList.add('hidden');
+            const modal = document.getElementById('modal-qrcode');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
         }
 
         function printSingleQrModal() {
@@ -4947,7 +5118,7 @@
                 showModal('QR Code belum selesai dibuat. Tekan Perbesar, tunggu QR tampil, lalu cetak kembali.', 'QR Belum Siap');
                 return;
             }
-            if (modal) modal.classList.remove('hidden');
+            if (modal) { modal.classList.remove('hidden'); modal.classList.add('flex'); }
             // Beri browser satu frame untuk menyiapkan layout cetak sebelum dialog print.
             requestAnimationFrame(() => setTimeout(() => window.print(), 180));
         }
