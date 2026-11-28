@@ -222,32 +222,56 @@
         </div>
     </div>
 
-    <!-- Modal khusus perubahan role anggota: tidak mengedit identitas, ID, nominal, atau status iuran. -->
+    <!-- Editor khusus akun anggota yang SUDAH terdaftar. Tidak membuat akun baru. -->
     <div id="member-role-modal" class="hidden fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm items-center justify-center p-4">
-        <div class="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
+        <div class="w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
             <div class="flex items-start justify-between gap-3 mb-5">
                 <div>
-                    <h3 class="text-lg font-bold text-white">Edit Role Anggota</h3>
-                    <p class="mt-1 text-xs text-slate-400">Hanya role dan hak akses yang akan diubah.</p>
+                    <h3 class="text-lg font-bold text-white">Edit Data Anggota</h3>
+                    <p class="mt-1 text-xs text-slate-400">Khusus akun yang sudah terdaftar. Tidak membuat akun atau pendaftaran baru.</p>
                 </div>
                 <button type="button" onclick="closeMemberRoleEditor()" class="text-slate-400 hover:text-white" aria-label="Tutup"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
             <input type="hidden" id="member-role-user-id">
             <div class="mb-4 rounded-xl border border-slate-800 bg-slate-950/70 p-3">
-                <div class="text-[10px] uppercase tracking-wider text-slate-500">Anggota</div>
-                <div id="member-role-name" class="mt-1 text-sm font-semibold text-white"></div>
-                <div id="member-role-member-id" class="mt-1 break-all font-mono text-[11px] text-slate-400"></div>
+                <div class="text-[10px] uppercase tracking-wider text-slate-500">ID Anggota (tidak dapat diubah)</div>
+                <div id="member-role-member-id" class="mt-1 break-all font-mono text-[11px] text-slate-300"></div>
             </div>
-            <label for="member-role-select" class="mb-2 block text-xs font-semibold text-slate-300">Role baru</label>
-            <select id="member-role-select" class="w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-white">
-                <option value="admin">Admin</option>
-                <option value="petugas">Petugas</option>
-                <option value="warga">Warga</option>
-            </select>
-            <p class="mt-3 text-[11px] leading-relaxed text-amber-300">ID anggota, data anggota, kewajiban iuran, dan seluruh transaksi/riwayat setoran tetap dipertahankan.</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="sm:col-span-2">
+                    <label for="member-edit-name" class="mb-1 block text-xs font-semibold text-slate-300">Nama lengkap</label>
+                    <input id="member-edit-name" type="text" maxlength="120" required class="w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-white">
+                </div>
+                <div class="sm:col-span-2">
+                    <label for="member-edit-email" class="mb-1 block text-xs font-semibold text-slate-300">Email login</label>
+                    <input id="member-edit-email" type="email" maxlength="254" required autocomplete="off" class="w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-white">
+                </div>
+                <div class="sm:col-span-2">
+                    <label for="member-edit-password" class="mb-1 block text-xs font-semibold text-slate-300">Password baru (opsional)</label>
+                    <input id="member-edit-password" type="password" minlength="8" autocomplete="new-password" placeholder="Kosongkan jika tidak ingin mengganti password" class="w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-white">
+                    <p class="mt-1 text-[10px] text-slate-500">Jika diisi, minimal 8 karakter. Password lama tidak ditampilkan.</p>
+                </div>
+                <div>
+                    <label for="member-edit-address" class="mb-1 block text-xs font-semibold text-slate-300">Alamat / nomor rumah</label>
+                    <input id="member-edit-address" type="text" maxlength="180" required class="w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-white">
+                </div>
+                <div>
+                    <label for="member-edit-nominal" class="mb-1 block text-xs font-semibold text-slate-300">Iuran wajib per hari (Rp)</label>
+                    <input id="member-edit-nominal" type="number" min="1" max="1000000" step="1" required class="w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-white">
+                </div>
+                <div class="sm:col-span-2">
+                    <label for="member-role-select" class="mb-1 block text-xs font-semibold text-slate-300">Role / hak akses</label>
+                    <select id="member-role-select" class="w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-white">
+                        <option value="admin">Admin</option>
+                        <option value="petugas">Petugas</option>
+                        <option value="warga">Warga</option>
+                    </select>
+                </div>
+            </div>
+            <p class="mt-3 text-[11px] leading-relaxed text-amber-300">Perubahan hanya memperbarui profil akun yang sudah ada. ID Anggota dan seluruh riwayat transaksi/setoran tetap dipertahankan.</p>
             <div class="mt-5 flex gap-2">
                 <button type="button" onclick="closeMemberRoleEditor()" class="flex-1 rounded-xl bg-slate-800 px-4 py-3 text-xs font-semibold text-slate-200 hover:bg-slate-700">Batal</button>
-                <button id="member-role-save" type="button" onclick="saveMemberRole()" class="flex-1 rounded-xl bg-indigo-600 px-4 py-3 text-xs font-bold text-white hover:bg-indigo-500">Simpan Role</button>
+                <button id="member-role-save" type="button" onclick="saveMemberRole()" class="flex-1 rounded-xl bg-indigo-600 px-4 py-3 text-xs font-bold text-white hover:bg-indigo-500">Simpan Perubahan</button>
             </div>
         </div>
     </div>
@@ -4229,7 +4253,7 @@
 
         function openMemberRoleEditor(userId) {
             if (!isAdminOrDeveloper()) {
-                showModal('Hanya Developer dan Admin yang boleh mengubah role anggota.', 'Akses Ditolak');
+                showModal('Hanya Developer dan Admin yang boleh mengedit data anggota.', 'Akses Ditolak');
                 return;
             }
             const user = db.users.find(item => String(item.id) === String(userId));
@@ -4238,17 +4262,22 @@
                 return;
             }
             if (String(user.role || '').toLowerCase() === 'developer') {
-                showModal('Role akun Developer dilindungi dan tidak dapat diubah melalui Kelola Anggota.', 'Aksi Ditolak');
+                showModal('Akun Developer dilindungi dan tidak dapat diedit melalui Kelola Anggota.', 'Aksi Ditolak');
                 return;
             }
             const authUserId = user.authUid || user.auth_uid;
-            if (!authUserId) {
-                showModal('Akun ini belum terhubung dengan profil akun database (user_id). Role tidak dapat diubah secara lokal saja.', 'Profil Database Tidak Ditemukan');
+            const memberId = user.memberId || user.member_id;
+            if (!authUserId || !memberId) {
+                showModal('Akun ini belum memiliki user_id atau member_id database yang valid. Data tidak dapat diedit secara aman.', 'Profil Database Tidak Lengkap');
                 return;
             }
             document.getElementById('member-role-user-id').value = String(authUserId);
-            document.getElementById('member-role-name').textContent = user.name || user.email || 'Anggota';
-            document.getElementById('member-role-member-id').textContent = 'ID Anggota: ' + String(user.memberId || user.member_id || 'Belum tersedia');
+            document.getElementById('member-role-member-id').textContent = String(memberId);
+            document.getElementById('member-edit-name').value = user.name || '';
+            document.getElementById('member-edit-email').value = user.email || '';
+            document.getElementById('member-edit-password').value = '';
+            document.getElementById('member-edit-address').value = user.address || '';
+            document.getElementById('member-edit-nominal').value = Number(user.dailyNominal || 2000);
             document.getElementById('member-role-select').value = ['admin', 'petugas', 'warga'].includes(String(user.role || '').toLowerCase())
                 ? String(user.role).toLowerCase() : 'warga';
             const modal = document.getElementById('member-role-modal');
@@ -4264,55 +4293,96 @@
 
         async function saveMemberRole() {
             if (!isAdminOrDeveloper()) {
-                showModal('Akses ditolak. Hanya Developer dan Admin yang boleh mengubah role.', 'Akses Ditolak');
+                showModal('Akses ditolak. Hanya Developer dan Admin yang boleh mengedit data anggota.', 'Akses Ditolak');
                 return;
             }
             const targetUserId = String(document.getElementById('member-role-user-id').value || '').trim();
+            const name = String(document.getElementById('member-edit-name').value || '').trim();
+            const email = String(document.getElementById('member-edit-email').value || '').trim().toLowerCase();
+            const password = String(document.getElementById('member-edit-password').value || '');
+            const address = String(document.getElementById('member-edit-address').value || '').trim();
+            const dailyNominal = Number(document.getElementById('member-edit-nominal').value);
             const newRole = String(document.getElementById('member-role-select').value || '').toLowerCase();
-            if (!targetUserId || !['admin', 'petugas', 'warga'].includes(newRole)) {
-                showModal('Profil anggota atau pilihan role tidak valid.', 'Data Tidak Valid');
+            if (!targetUserId || !name || !address || !email || !/^\S+@\S+\.\S+$/.test(email) ||
+                !Number.isInteger(dailyNominal) || dailyNominal < 1 || dailyNominal > 1000000 ||
+                (password && password.length < 8) || !['admin', 'petugas', 'warga'].includes(newRole)) {
+                showModal('Periksa nama, email, alamat, role, iuran Rp 1–1.000.000, dan password baru (minimal 8 karakter jika diisi).', 'Data Tidak Valid');
                 return;
             }
             const target = db.users.find(item => String(item.authUid || item.auth_uid || '') === targetUserId);
-            if (!target) {
-                showModal('Profil anggota tidak ditemukan pada daftar aktif. Muat ulang daftar anggota.', 'Anggota Tidak Ditemukan');
-                return;
-            }
-            if (String(target.role || '').toLowerCase() === 'developer') {
-                showModal('Role Developer dilindungi.', 'Aksi Ditolak');
-                return;
-            }
-            if (String(target.role || '').toLowerCase() === newRole) {
-                closeMemberRoleEditor();
-                showModal('Role anggota sudah sesuai. Tidak ada perubahan yang diperlukan.', 'Tidak Ada Perubahan');
+            if (!target || String(target.role || '').toLowerCase() === 'developer') {
+                showModal('Profil anggota tidak ditemukan atau merupakan akun Developer yang dilindungi.', 'Aksi Ditolak');
                 return;
             }
             if (!supabaseConfig || !supabaseAuthSession || !navigator.onLine) {
-                showModal('Perubahan role memerlukan koneksi database dan internet aktif.', 'Database Tidak Terhubung');
+                showModal('Edit anggota memerlukan sesi database dan koneksi internet aktif.', 'Database Tidak Terhubung');
                 return;
             }
             const button = document.getElementById('member-role-save');
-            const previousRole = String(target.role || 'warga');
             button.disabled = true;
             button.textContent = 'Menyimpan…';
             try {
-                // RPC memeriksa role pemanggil di sisi database. Browser tidak menulis role secara lokal.
-                const result = await restRequest('rpc/update_jimpitan_member_role', '', {
+                const result = await restRequest('rpc/admin_update_jimpitan_member', '', {
                     method: 'POST',
-                    body: { p_target_user_id: targetUserId, p_new_role: newRole }
+                    body: {
+                        p_target_user_id: targetUserId,
+                        p_display_name: name,
+                        p_email: email,
+                        p_new_password: password || null,
+                        p_address: address,
+                        p_daily_nominal: dailyNominal,
+                        p_new_role: newRole
+                    }
                 });
                 const outcome = Array.isArray(result) ? result[0] : result;
-                if (outcome && outcome.success === false) throw new Error(outcome.message || 'Database menolak perubahan role.');
+                if (outcome && outcome.success === false) throw new Error(outcome.message || 'Database menolak perubahan profil.');
                 closeMemberRoleEditor();
                 await loadRoleManagementMembers();
-                logActivity('Perubahan role anggota ' + (target.name || target.email || targetUserId) + ': ' + previousRole + ' → ' + newRole);
-                showModal('Role anggota berhasil diubah dari ' + previousRole.toUpperCase() + ' menjadi ' + newRole.toUpperCase() + '. ID anggota dan data transaksi tidak diubah.', 'Role Berhasil Diperbarui');
+                logActivity('Edit profil anggota: ' + name + ' (' + email + ')');
+                showModal('Data anggota berhasil diperbarui di database. ID anggota dan riwayat transaksi/setoran tetap.', 'Perubahan Tersimpan');
             } catch (err) {
-                console.error('Perubahan role gagal:', err);
-                showModal('Perubahan role gagal disimpan oleh database: ' + (err.message || err) + '. Pastikan fungsi SQL update_jimpitan_member_role sudah dipasang dan izin server aktif.', 'Gagal Mengubah Role');
+                console.error('Edit profil anggota gagal:', err);
+                showModal('Perubahan belum berhasil disimpan ke database: ' + (err.message || err) + '. Pastikan SQL admin_update_jimpitan_member sudah dijalankan.', 'Gagal Menyimpan');
             } finally {
                 button.disabled = false;
-                button.textContent = 'Simpan Role';
+                button.textContent = 'Simpan Perubahan';
+            }
+        }
+
+        async function resetMemberSetoran(userId) {
+            if (!isAdminOrDeveloper()) {
+                showModal('Hanya Developer dan Admin yang boleh mereset status setoran anggota.', 'Akses Ditolak');
+                return;
+            }
+            const target = db.users.find(item => String(item.id) === String(userId));
+            if (!target || String(target.role || '').toLowerCase() === 'developer') {
+                showModal('Anggota tidak ditemukan atau merupakan akun Developer yang dilindungi.', 'Aksi Ditolak');
+                return;
+            }
+            const memberId = String(target.memberId || target.member_id || '').trim();
+            if (!memberId || !target.authUid && !target.auth_uid) {
+                showModal('ID anggota atau tautan akun database tidak tersedia. Reset dibatalkan.', 'Data Anggota Tidak Lengkap');
+                return;
+            }
+            if (!supabaseConfig || !supabaseAuthSession || !navigator.onLine) {
+                showModal('Reset setoran memerlukan koneksi database dan internet aktif.', 'Database Tidak Terhubung');
+                return;
+            }
+            if (!confirm('Reset status setoran hari ini untuk ' + (target.name || 'anggota ini') + '? Status menjadi KOSONG dan tanggal setoran terakhir dikosongkan. Riwayat transaksi/setoran tidak dihapus.')) return;
+            try {
+                const result = await restRequest('rpc/admin_reset_jimpitan_member_setoran', '', {
+                    method: 'POST',
+                    body: { p_member_id: memberId }
+                });
+                const outcome = Array.isArray(result) ? result[0] : result;
+                if (outcome && outcome.success === false) throw new Error(outcome.message || 'Database menolak reset setoran.');
+                await loadRoleManagementMembers();
+                renderDashboardData();
+                logActivity('Reset status setoran anggota: ' + (target.name || memberId));
+                showModal('Status setoran ' + (target.name || 'anggota') + ' berhasil direset menjadi KOSONG. Riwayat transaksi tetap tersimpan.', 'Reset Setoran Berhasil');
+            } catch (err) {
+                console.error('Reset setoran anggota gagal:', err);
+                showModal('Reset setoran gagal disimpan ke database: ' + (err.message || err) + '. Pastikan SQL admin_reset_jimpitan_member_setoran sudah dijalankan.', 'Reset Gagal');
             }
         }
 
@@ -4337,7 +4407,10 @@
                 if (isAdmin && String(u.role || '').toLowerCase() !== 'developer') {
                     actionTd = `
                         <td class="p-4 text-center">
-                            <button onclick="openMemberRoleEditor(decodeURIComponent('${encodeURIComponent(String(u.id))}'))" class="inline-flex items-center gap-1 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-2 text-[10px] font-semibold text-indigo-300 hover:bg-indigo-500/20 cursor-pointer" title="Edit Role"><i class="fa-solid fa-user-pen"></i><span>Edit</span></button>
+                            <div class="flex flex-wrap justify-center gap-1.5">
+                            <button onclick="openMemberRoleEditor(decodeURIComponent('${encodeURIComponent(String(u.id))}'))" class="inline-flex items-center gap-1 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-2 text-[10px] font-semibold text-indigo-300 hover:bg-indigo-500/20 cursor-pointer" title="Edit data anggota"><i class="fa-solid fa-user-pen"></i><span>Edit</span></button>
+                            <button onclick="resetMemberSetoran(decodeURIComponent('${encodeURIComponent(String(u.id))}'))" class="inline-flex items-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[10px] font-semibold text-amber-300 hover:bg-amber-500/20 cursor-pointer" title="Reset status setoran hari ini"><i class="fa-solid fa-rotate-left"></i><span>Reset Setoran</span></button>
+                        </div>
                         </td>
                     `;
                 } else {
